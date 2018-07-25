@@ -1,0 +1,6 @@
+* Handle non-peak picked input?
+* Remove peptides which don't match score filter
+* Compute the recalibration
+*   Implement the recalibation functions for different instruments
+
+* From recalibration parameters, create re-calibrated mzml file
