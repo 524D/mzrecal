@@ -157,20 +157,6 @@ package main
 //
 //         /* OK, that was one internal recalibration, now lets check if all calibrants are < INTERNAL_CALIBRATION_TARGET, if not, throw these out */
 //         /* and recalibrate (as long as we have at least min_cal peaks) */
-//
-// #if 0 // Old code, just there to compare the results
-//         // FIXME: replace qsort by a copy loop over all remaining calibrants
-//         //    that way, we can get rid of the global Ca/Cb and it is also
-//         //    faster (O(n) vs O(n log n)
-//         qsort(calibrant_list, n_calibrants, sizeof(calibrant), sort_type_comp_inv_err);
-//
-//         for(j=n_calibrants-1; j>=0; j--)
-//         	if (fabs((calibrant_list[j].mz-mz_recal(calibrant_list[j].peak))/calibrant_list[j].mz)<INTERNAL_CALIBRATION_TARGET)
-//         		break;
-//         if (j==n_calibrants-1)
-//             SATISFIED=1; /* all calibrants < INTERNAL_CALIBRATION_TARGET */
-//         n_calibrants=j+1; /* remove calibrants that doesn't fit CAL2 better than e.g. 2 ppm */
-// #else
 //         int j_tmp = 0;
 //         for(j=0; j<n_calibrants; j++) {
 //          	if (fabs((calibrant_list[j].mz-mz_recal(calibrant_list[j].peak))/calibrant_list[j].mz)<INTERNAL_CALIBRATION_TARGET) {
@@ -184,13 +170,6 @@ package main
 //            SATISFIED=1; /* all calibrants < INTERNAL_CALIBRATION_TARGET */
 //         }
 //         n_calibrants=j_tmp;
-// #endif
-//         if (spec_nr == 313) {
-//           for(j=0; j<n_calibrants; j++) {
-//               printf("%1.9f %1.9f\n", calibrant_list[j].mz, fabs((calibrant_list[j].mz-mz_recal(calibrant_list[j].peak))/calibrant_list[j].mz));
-//           }
-//           printf("\n");
-//         }
 //     }
 // 	return SATISFIED;
 // }
