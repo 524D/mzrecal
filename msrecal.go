@@ -280,10 +280,10 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 					i, err)
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
-			log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
-				i, len(mzCalibrants), len(mzMatchingCals))
+			// log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
+			// 	i, len(mzCalibrants), len(mzMatchingCals))
 
-			specRecalPar, err := recalibrateSpec(i, mzMatchingCals)
+			specRecalPar, err := recalibrateSpec(i, mzMatchingCals, par)
 			if err != nil {
 				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
 					i, err)
@@ -338,14 +338,6 @@ func maxPeakInMzWindow(mzMin, mzMax float64, peaks []mzml.Peak) mzml.Peak {
 		}
 	}
 	return peak
-}
-
-func recalibrateSpec(specNr int, mzCalibrants []mzCalibrant) (specRecalParams, error) {
-	var specRecalPar specRecalParams
-
-	specRecalPar.SpecNr = specNr
-
-	return specRecalPar, nil
 }
 
 func writeRecal(recal recalParams, par params) error {
@@ -439,7 +431,4 @@ func main() {
 	if err != nil {
 		log.Fatalf("writeRecal: error return %v", err)
 	}
-
-	// FIXME: testcode below: remove
-	gsl()
 }
