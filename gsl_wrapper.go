@@ -13,7 +13,17 @@ package main
 // #include <gsl/gsl_vector.h>
 // #include <gsl/gsl_blas.h>
 // #include <gsl/gsl_multifit_nlin.h>
+//
 // // COPIED/MODIFIED FROM MSRECAL/RECAL_FUNCTIONS.C
+//
+// // The maximum number of calibration parameters of any calibration function
+// #define MAX_CAL_PARS 10
+//
+// typedef struct {
+//     int satisfied;
+//     int nr_cal_pars;
+//     double cal_pars[MAX_CAL_PARS];
+// } spec_cal_result_t;
 //
 // // Calibrant description type
 // typedef struct calibrant_type {
@@ -34,29 +44,10 @@ package main
 // calibrant calibrant_list[MAX_CALIBRANTS];
 // calibrant calibrant_list_tmp[MAX_CALIBRANTS];
 // int n_calibrants;
-// double Ca, Cb;
 //
-// double mz_recal(double peak)
+// double mz_recal(double peak, double Ca, double Cb)
 // {
 // 	return Ca/((1/peak)-Cb);
-// }
-//
-// int sort_type_comp_inv_err(const void *i, const void *j)
-// {
-// 	calibrant *ip, *jp;
-// 	double erri, errj;
-//
-// 	ip = (calibrant*)i;
-// 	jp = (calibrant*)j;
-//
-// 	erri = fabs((ip->mz - mz_recal(ip->peak))/ip->mz);
-// 	errj = fabs((jp->mz - mz_recal(jp->peak))/jp->mz);
-//
-// 	if ((errj - erri) < 0)
-// 		return 1;
-// 	else if ((errj - erri) > 0)
-// 		return -1;
-// 	return 0;
 // }
 //
 // int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
@@ -104,20 +95,20 @@ package main
 // 	return GSL_SUCCESS;
 // }
 //
-//
-//
-// int recalibratePeaks(int min_cal, int spec_nr){
+// spec_cal_result_t recalibratePeaks(int min_cal, int spec_nr){
 //     int status, SATISFIED, j;
 //
 //     const gsl_multifit_fdfsolver_type *T;
-// 	gsl_multifit_fdfsolver *s;
-// 	double chi;
-//  int iter=0;
-// 	const size_t pp=2; /* number of free parameters in calibration function */
-// 	double y[MAX_CALIBRANTS];
-// 	double mz2[MAX_CALIBRANTS];
-// 	struct data d={y,mz2};
-// 	double x_init[2]={1.0,0.0}; /* start here, close to minimum if reasonably calibrated beforehand */
+// 	   gsl_multifit_fdfsolver *s;
+// 	   double chi;
+//     int iter=0;
+// 	   const size_t pp=2; /* number of free parameters in calibration function */
+// 	   double y[MAX_CALIBRANTS];
+// 	   double mz2[MAX_CALIBRANTS];
+// 	   struct data d={y,mz2};
+// 	   double x_init[2]={1.0,0.0}; /* start here, close to minimum if reasonably calibrated beforehand */
+//     double Ca, Cb;
+//     spec_cal_result_t spec_cal_result;
 //
 //     gsl_multifit_function_fdf func;
 //     gsl_vector_view x=gsl_vector_view_array(x_init,pp);
@@ -129,8 +120,8 @@ package main
 //     while (n_calibrants >= min_cal && !SATISFIED) {
 //     	   /* least-squares fit first using all peaks, than removing those that don't fit */
 //         for (j=0;j<n_calibrants;j++) {
-//         	d.y[j] = 1 / calibrant_list[j].peak;
-//         	d.mz2[j] = calibrant_list[j].mz;
+//             d.y[j] = 1 / calibrant_list[j].peak;
+//             d.mz2[j] = calibrant_list[j].mz;
 //         }
 //
 //         iter=0;
@@ -142,12 +133,12 @@ package main
 //         gsl_multifit_fdfsolver_set(s,&func,&x.vector);
 //
 //         do {
-//         	iter++;
-//         	status = gsl_multifit_fdfsolver_iterate (s);
+//             iter++;
+//             status = gsl_multifit_fdfsolver_iterate (s);
 //
-//         	if (status)
-//         		break;
-//         	status=gsl_multifit_test_delta (s->dx, s->x, 1e-9, 1e-9);
+//             if (status)
+//                 break;
+//             status=gsl_multifit_test_delta (s->dx, s->x, 1e-9, 1e-9);
 //         } while (status==GSL_CONTINUE && iter<500);
 //
 //         Ca = gsl_vector_get(s->x,0);
@@ -159,19 +150,28 @@ package main
 //         /* and recalibrate (as long as we have at least min_cal peaks) */
 //         int j_tmp = 0;
 //         for(j=0; j<n_calibrants; j++) {
-//          	if (fabs((calibrant_list[j].mz-mz_recal(calibrant_list[j].peak))/calibrant_list[j].mz)<INTERNAL_CALIBRATION_TARGET) {
-//               calibrant_list_tmp[j_tmp++] = calibrant_list[j];
-//            }
+//             if (fabs((calibrant_list[j].mz-mz_recal(calibrant_list[j].peak, Ca, Cb))/calibrant_list[j].mz)<INTERNAL_CALIBRATION_TARGET) {
+//                 calibrant_list_tmp[j_tmp++] = calibrant_list[j];
+//             }
 //         }
 //         for(j=0; j<j_tmp; j++) {
-//            calibrant_list[j] = calibrant_list_tmp[j];
+//             calibrant_list[j] = calibrant_list_tmp[j];
 //         }
 //         if (j_tmp == n_calibrants) {
-//            SATISFIED=1; /* all calibrants < INTERNAL_CALIBRATION_TARGET */
+//             SATISFIED=1; /* all calibrants < INTERNAL_CALIBRATION_TARGET */
 //         }
 //         n_calibrants=j_tmp;
 //     }
-// 	return SATISFIED;
+//     spec_cal_result.satisfied = SATISFIED;
+//     if (SATISFIED) {
+//         spec_cal_result.cal_pars[0] = Ca;
+//         spec_cal_result.cal_pars[1] = Cb;
+//         spec_cal_result.nr_cal_pars = 2;
+//     }
+//     else {
+//         spec_cal_result.nr_cal_pars = 0;
+//     }
+// 	   return spec_cal_result;
 // }
 import "C"
 
@@ -185,9 +185,11 @@ func recalibrateSpec(specNr int, mzCalibrants []mzCalibrant, par params) (specRe
 		C.calibrant_list[i].peak = C.double(calibrant.mzMeasured)
 	}
 	C.n_calibrants = C.int(len(mzCalibrants))
-	recalOK, _ := C.recalibratePeaks(C.int(*par.minCal), C.int(specNr))
-	if int(recalOK) != 0 {
-		specRecalPar.P = append(specRecalPar.P, float64(C.Ca), float64(C.Cb))
+	specCalResult, _ := C.recalibratePeaks(C.int(*par.minCal), C.int(specNr))
+	if int(specCalResult.satisfied) != 0 {
+		for i := 0; i < int(specCalResult.nr_cal_pars); i++ {
+			specRecalPar.P = append(specRecalPar.P, float64(specCalResult.cal_pars[i]))
+		}
 	}
 	return specRecalPar, nil
 }
