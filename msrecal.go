@@ -11,7 +11,9 @@ import (
 	"log"
 	"math"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 
 	"msrecal/mzidentml"
 	"msrecal/mzml"
@@ -20,6 +22,7 @@ import (
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
+// Command line parameters
 type params struct {
 	mzMLFilename      *string
 	mzIdentMlFilename *string
@@ -29,9 +32,7 @@ type params struct {
 	lowRT             *float64 // lower rt window boundary
 	upRT              *float64 // upper rt window boundary
 	mzErrPPM          *float64 // max mass measurement error
-	scoreName         *string  // the name of the score parameter
-	minScore          *float64 // min score filter
-	maxScore          *float64 // max score filter
+	scoreFilter       *string  // PSM score filter to apply
 	minMz             *int     // min m/z for calibrants
 	maxMz             *int     // max m/z for calibrants
 }
@@ -43,18 +44,23 @@ type calibrant struct {
 	singleCharged bool
 }
 
-type specRecalParams struct {
-	SpecNr int
-	P      []float64
-}
-
 // recalParams contains recalibration parameters for each spectrum,
 // in addition to generic recalibration data for the whole file
 type recalParams struct {
 	// Version of recalibration parameters, used when storing/loading
 	// parameters in JSON format for different version of the software
 	MSRecalVersion string
+	RecalMethod    string // Recalibraion method used (TOF/FTICR/Orbitrap)
 	SpecRecalPar   []specRecalParams
+}
+
+// specRecalParams contain the recalibration parameters for each
+// spectrum. RecalMethod (from type recalParams) determines which
+// computation must be done with these parameters to obtain the
+// final calibration
+type specRecalParams struct {
+	SpecNr int
+	P      []float64
 }
 
 type mzCalibrant struct {
@@ -197,7 +203,9 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []calibrant) ([]calibrant, 
 	i2 := sort.Search(len(allCals), func(i int) bool { return allCals[i].retentionTime > rtMax })
 
 	// Find calibrants that elute at all retention times
-	// These have elusiton time -math.MaxFloat64
+	// These have elution time -math.MaxFloat64 and are located at the
+	// start of the list of calibrants. Thus, to search them, we simply
+	// search from the start for calibrants with elution time -math.MaxFloat64
 	var i3 int
 	for i3 = 0; allCals[i3].retentionTime == -math.MaxFloat64; i3++ {
 	}
@@ -210,7 +218,9 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []calibrant) ([]calibrant, 
 }
 
 // mergeSameMassCals merges all calibrants that have the same mass or
-// nearly the same mass. The mass of the first calibrant is retained
+// nearly the same mass. The mass of the first calibrant that was encountered
+// is retained, while the names of the other calibrants are appended
+// to the final calibrant name.
 func mergeSameMassCals(cals []calibrant) []calibrant {
 	mcals := make([]calibrant, 0, len(cals))
 	// sort calibrants by mass
@@ -352,6 +362,55 @@ func writeRecal(recal recalParams, par params) error {
 	return nil
 }
 
+type scoreRange struct {
+	minScore float64 // Minimum score to accept
+	maxScore float64 // Maximum score to accept
+}
+
+type scoreFilter map[string]scoreRange
+
+func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
+	scoreFilt := make(scoreFilter)
+	var err error
+
+	re := regexp.MustCompile(`([^\(]+)\(([^\:\)]*):([^\:\)]*)\)`)
+	matchedStringsList := re.FindAllStringSubmatch(scoreFilterStr, -1)
+	if matchedStringsList != nil {
+		for _, matchedStrings := range matchedStringsList {
+			scoreName := matchedStrings[1]
+			scoreMinStr := matchedStrings[2]
+			scoreMaxStr := matchedStrings[3]
+			_, ok := scoreFilt[scoreName]
+			if ok {
+
+				return nil, errors.New(`Error parsing score filter. ` + scoreName + ` defined more than once.`)
+			}
+			if scoreMinStr == `` && scoreMaxStr == `` {
+				return nil, errors.New(`Error parsing score filter. Both minscore and maxscore are empty for ` + scoreName)
+			}
+			scRange := scoreRange{minScore: -math.MaxFloat64, maxScore: math.MaxFloat64}
+			if scoreMinStr != `` {
+				scRange.minScore, err = strconv.ParseFloat(scoreMinStr, 64)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if scoreMaxStr != `` {
+				scRange.maxScore, err = strconv.ParseFloat(scoreMaxStr, 64)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if scRange.minScore > scRange.maxScore {
+				return nil, errors.New(`Error parsing score filter. minscore > maxscore for ` + scoreName)
+			}
+			scoreFilt[scoreName] = scRange
+		}
+	}
+
+	return scoreFilt, nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var par params
@@ -380,15 +439,18 @@ func main() {
 	par.mzErrPPM = flag.Float64("massErr",
 		10.0,
 		"max mz error for assigning a peak to a calibrant")
-	par.scoreName = flag.String("scoreName",
-		"MS-GF:PepQValue",
-		"the name of the score parameter")
-	par.minScore = flag.Float64("minScore",
-		0.1,
-		"min score filter")
-	par.maxScore = flag.Float64("maxScore",
-		1.0,
-		"min score filter")
+	par.scoreFilter = flag.String("scoreFilter",
+		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
+		"filter for PSM scores to accept. Format: "+
+			"<CVterm1|scorename1>([<minscore1>]:[<maxscore1>])... "+
+			"When multiple score names/CV terms are specified, "+
+			"the first one on the list that matches a score in the "+
+			"input file will be used. "+
+			"TODO: The default contains reasonable values for some common "+
+			"search engines and post-search scoring software: "+
+			"MS:1002257 (Comet:expectation value), "+
+			"MS:1001159 (SEQUEST:expectation value), "+
+			"MS:1002466 (PeptideShaker PSM score)")
 	par.minMz = flag.Int("minmz",
 		1,
 		"min m/z for calibrants")
@@ -397,6 +459,13 @@ func main() {
 		"max m/z for calibrants")
 
 	flag.Parse()
+	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
+	log.Printf("%v\n", scoreFilt)
+
+	if err != nil {
+		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
+	}
+
 	f1, err := os.Open(*par.mzIdentMlFilename)
 	if err != nil {
 		log.Fatalf("Open: mzIdentMLfile %v", err)
