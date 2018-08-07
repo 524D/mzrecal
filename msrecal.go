@@ -70,13 +70,32 @@ type mzCalibrant struct {
 	charge     int        // Only used for verbose output
 }
 
+type scoreRange struct {
+	minScore float64 // Minimum score to accept
+	maxScore float64 // Maximum score to accept
+}
+
+type scoreFilter map[string]scoreRange
+
 var fixedCalibrants = []calibrant{
 
 	// cyclosiloxanes, H6nC2nOnSin
 	calibrant{
+		name:          `cyclosiloxane6`,
+		mass:          444.1127481,
+		retentionTime: -math.MaxFloat64, // Indicates any retention time
+		singleCharged: true,
+	},
+	calibrant{
+		name:          `cyclosiloxane7`,
+		mass:          518.1315394,
+		retentionTime: -math.MaxFloat64,
+		singleCharged: true,
+	},
+	calibrant{
 		name:          `cyclosiloxane8`,
 		mass:          592.1503308,
-		retentionTime: -math.MaxFloat64, // Indicates any retention time
+		retentionTime: -math.MaxFloat64,
 		singleCharged: true,
 	},
 	calibrant{
@@ -362,13 +381,6 @@ func writeRecal(recal recalParams, par params) error {
 	return nil
 }
 
-type scoreRange struct {
-	minScore float64 // Minimum score to accept
-	maxScore float64 // Maximum score to accept
-}
-
-type scoreFilter map[string]scoreRange
-
 func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	scoreFilt := make(scoreFilter)
 	var err error
@@ -383,10 +395,10 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 			_, ok := scoreFilt[scoreName]
 			if ok {
 
-				return nil, errors.New(`Error parsing score filter. ` + scoreName + ` defined more than once.`)
+				return nil, errors.New(scoreName + ` defined more than once.`)
 			}
 			if scoreMinStr == `` && scoreMaxStr == `` {
-				return nil, errors.New(`Error parsing score filter. Both minscore and maxscore are empty for ` + scoreName)
+				return nil, errors.New(`Both minscore and maxscore are empty for ` + scoreName)
 			}
 			scRange := scoreRange{minScore: -math.MaxFloat64, maxScore: math.MaxFloat64}
 			if scoreMinStr != `` {
@@ -402,7 +414,7 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 				}
 			}
 			if scRange.minScore > scRange.maxScore {
-				return nil, errors.New(`Error parsing score filter. minscore > maxscore for ` + scoreName)
+				return nil, errors.New(`minscore > maxscore for ` + scoreName)
 			}
 			scoreFilt[scoreName] = scRange
 		}
@@ -417,46 +429,46 @@ func main() {
 
 	par.mzMLFilename = flag.String("mzml",
 		"test.mzml",
-		"mzML filename")
+		"mzML filename\n")
 	par.mzIdentMlFilename = flag.String("mzid",
 		"test.mzid",
-		"mzIdentMl filename")
+		"mzIdentMl filename\n")
 	par.calFilename = flag.String("cal",
 		"test.cal.json",
-		"filename for calibration paramters")
+		"filename for output of computed calibration parameters\n")
 	par.minCal = flag.Int("mincals",
 		3,
-		"minimum number of calibrants a spectrum should have to be recalibrated")
+		"minimum number of calibrants a spectrum should have to be recalibrated\n")
 	par.minPeak = flag.Float64("minPeak",
 		10000,
-		"minimum intensity of peaks to be considered for recalibrating")
+		"minimum intensity of peaks to be considered for recalibrating\n")
 	par.lowRT = flag.Float64("lowRT",
 		10,
-		"lower rt window boundary (s)")
+		"lower rt window boundary (s)\n")
 	par.upRT = flag.Float64("upRT",
 		10,
-		"upper rt window boundary (s)")
+		"upper rt window boundary (s)\n")
 	par.mzErrPPM = flag.Float64("massErr",
 		10.0,
-		"max mz error for assigning a peak to a calibrant")
+		"max mz error for assigning a peak to a calibrant\n")
 	par.scoreFilter = flag.String("scoreFilter",
 		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
-		"filter for PSM scores to accept. Format: "+
-			"<CVterm1|scorename1>([<minscore1>]:[<maxscore1>])... "+
-			"When multiple score names/CV terms are specified, "+
-			"the first one on the list that matches a score in the "+
-			"input file will be used. "+
-			"TODO: The default contains reasonable values for some common "+
-			"search engines and post-search scoring software: "+
-			"MS:1002257 (Comet:expectation value), "+
-			"MS:1001159 (SEQUEST:expectation value), "+
-			"MS:1002466 (PeptideShaker PSM score)")
+		`filter for PSM scores to accept. Format:
+<CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
+When multiple score names/CV terms are specified, the first one on the list
+that matches a score in the input file will be used.
+TODO: The default contains reasonable values for some common search engines
+and post-search scoring software:
+MS:1002257 (Comet:expectation value)
+MS:1001159 (SEQUEST:expectation value)
+MS:1002466 (PeptideShaker PSM score)
+`)
 	par.minMz = flag.Int("minmz",
 		1,
-		"min m/z for calibrants")
+		"min m/z for calibrants\n")
 	par.maxMz = flag.Int("maxmz",
 		5,
-		"max m/z for calibrants")
+		"max m/z for calibrants\n")
 
 	flag.Parse()
 	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
