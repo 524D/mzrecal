@@ -73,6 +73,7 @@ type mzCalibrant struct {
 type scoreRange struct {
 	minScore float64 // Minimum score to accept
 	maxScore float64 // Maximum score to accept
+	priority int     // Priority of the score, lowest is best
 }
 
 type scoreFilter map[string]scoreRange
@@ -187,27 +188,56 @@ func pepMass(pepSeq string) (float64, error) {
 // Calibrants are obtained from 2 sources:
 // - Identied peptides (from mzid file)
 // - Build-in list of fixed calibrants (cyclosiloxanes)
+// Identified peptides are only used if they pass the score filter
 // For each calibrant, it:
 // - computes the mass of the lightest isotope
 // - get the retention name, retentionTime, spectrum
-func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, par params) (
-	[]calibrant, error) {
-	// Create slice for the numbar of calibrants that we expect to have
+func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
+	par params) ([]calibrant, error) {
+	// Create slice for the number of calibrants that we expect to have
 	cals := make([]calibrant, 0, mzIdentML.NumIdents()+len(fixedCalibrants))
 	for i := 0; i < mzIdentML.NumIdents(); i++ {
 		ident, err := mzIdentML.Ident(i)
 		if err != nil {
 			return nil, err
 		}
-		var cal calibrant
-		m, err := pepMass(ident.PepSeq)
-		if err == nil { // Skip if mass cannot be computed
-			cal.name = ident.PepID
-			cal.retentionTime = ident.RetentionTime
-			cal.singleCharged = false
-			cal.mass = m + ident.ModMass
-			cals = append(cals, cal)
+		//		log.Printf("indent %+v\n", ident)
+		scoreOK := false
+		curPrio := math.MaxInt32
+		for _, cv := range ident.Cv {
+			// Check if the CV accession number or CV name matches scorefilter
+			filt, ok := scoreFilt[cv.Accession]
+			if !ok {
+				filt, ok = scoreFilt[cv.Name]
+			}
+			if ok {
+				if filt.priority < curPrio {
+					var score float64
+					score, err = strconv.ParseFloat(cv.Value, 64)
+					if err != nil {
+						return nil, errors.New("Invalid score value " + cv.Value)
+					}
+					scoreOK = score >= filt.minScore && score <= filt.maxScore
+				}
+			}
 		}
+		if scoreOK {
+			var cal calibrant
+			m, err := pepMass(ident.PepSeq)
+			if err == nil { // Skip if mass cannot be computed
+				cal.name = ident.PepID
+				cal.retentionTime = ident.RetentionTime
+				cal.singleCharged = false
+				cal.mass = m + ident.ModMass
+				cals = append(cals, cal)
+			}
+		} else {
+			//			log.Print(ident.PepID + " does not match score filter.")
+		}
+	}
+	//	log.Print(len(cals), " of ", mzIdentML.NumIdents(), " identifications usable for calibration.")
+	if len(cals) == 0 {
+		log.Print("No identified spectra will be used as calibrant. Is scorefilter applicable for this file?")
 	}
 	cals = append(cals, fixedCalibrants...)
 	sort.Sort(byRetention(cals))
@@ -293,7 +323,7 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 			mzCalibrants := make([]mzCalibrant, 0,
 				len(specCals)*(*par.maxMz-*par.minMz))
 			for j, cal := range specCals {
-				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", j, retentionTime, cal)
+				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
 				if cal.singleCharged {
 					mzCalibrants = append(mzCalibrants, newMzCalibrant(1, &specCals[j]))
 				} else {
@@ -309,8 +339,8 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 					i, err)
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
-			// log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
-			// 	i, len(mzCalibrants), len(mzMatchingCals))
+			log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
+				i, len(mzCalibrants), len(mzMatchingCals))
 
 			specRecalPar, err := recalibrateSpec(i, mzMatchingCals, par)
 			if err != nil {
@@ -388,7 +418,7 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	re := regexp.MustCompile(`([^\(]+)\(([^\:\)]*):([^\:\)]*)\)`)
 	matchedStringsList := re.FindAllStringSubmatch(scoreFilterStr, -1)
 	if matchedStringsList != nil {
-		for _, matchedStrings := range matchedStringsList {
+		for n, matchedStrings := range matchedStringsList {
 			scoreName := matchedStrings[1]
 			scoreMinStr := matchedStrings[2]
 			scoreMaxStr := matchedStrings[3]
@@ -400,7 +430,7 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 			if scoreMinStr == `` && scoreMaxStr == `` {
 				return nil, errors.New(`Both minscore and maxscore are empty for ` + scoreName)
 			}
-			scRange := scoreRange{minScore: -math.MaxFloat64, maxScore: math.MaxFloat64}
+			scRange := scoreRange{minScore: -math.MaxFloat64, maxScore: math.MaxFloat64, priority: n}
 			if scoreMinStr != `` {
 				scRange.minScore, err = strconv.ParseFloat(scoreMinStr, 64)
 				if err != nil {
@@ -472,7 +502,6 @@ MS:1002466 (PeptideShaker PSM score)
 
 	flag.Parse()
 	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
-	log.Printf("%v\n", scoreFilt)
 
 	if err != nil {
 		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
@@ -487,7 +516,7 @@ MS:1002466 (PeptideShaker PSM score)
 	if err != nil {
 		log.Fatalf("mzidentml.Read: error return %v", err)
 	}
-	cals, err := makeCalibrantList(&mzIdentML, par)
+	cals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
 	if err != nil {
 		log.Fatal("makeCalibrantList failed")
 	}

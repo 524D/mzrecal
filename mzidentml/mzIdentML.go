@@ -27,6 +27,7 @@ type Identification struct {
 	ModMass       float64
 	SpecID        string
 	RetentionTime float64
+	Cv            []cvParam
 }
 
 type mzIdentMLContent struct {

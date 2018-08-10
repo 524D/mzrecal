@@ -32,10 +32,10 @@ func (m *MzIdentML) buildPepID2Sequence() {
 func (m *MzIdentML) buildIdentList() {
 	for i := range m.content.SpectrumIdentificationResult {
 		for j := range m.content.SpectrumIdentificationResult[i].SpectrumIdentificationItem {
-			var ident identRef
-			ident.specIDIdx = i
-			ident.specResultIdx = j
-			m.identList = append(m.identList, ident)
+			var iRef identRef
+			iRef.specIDIdx = i
+			iRef.specResultIdx = j
+			m.identList = append(m.identList, iRef)
 		}
 	}
 }
@@ -78,5 +78,10 @@ func (m *MzIdentML) Ident(i int) (Identification, error) {
 			ident.RetentionTime = retentionTime
 		}
 	}
+	// Collect CV terms/values for the identification, the scores are in there
+	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].SpectrumIdentificationItem[specResultIdx].CvParam {
+		ident.Cv = append(ident.Cv, cv)
+	}
+
 	return ident, nil
 }
