@@ -220,6 +220,35 @@ func (f *MzML) MSLevel(scanIndex int) (int, error) {
 	return 1, nil // If nothing else, guess it's MS1
 }
 
+// MSInstruments returns the CV terms of the MS instrument
+func (f *MzML) MSInstruments() ([]string, error) {
+
+	type analyzer struct {
+		CvParam cvParam `xml:"cvParam"`
+	}
+	type instrumentConfiguration struct {
+		XMLName  xml.Name   `xml:"instrumentConfiguration"`
+		Analyzer []analyzer `xml:"componentList>analyzer"`
+	}
+
+	var instr []string
+	var instrConf instrumentConfiguration
+
+	// Get the raw XML for the instrument configuration
+	XML := f.content.InstrumentConfigurationList.InstrumentConfigurationListXML
+	// Parse it
+	err := xml.Unmarshal(XML, &instrConf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fill array with CV params of analysers
+	for _, conf := range instrConf.Analyzer {
+		instr = append(instr, conf.CvParam.Accession)
+	}
+	return instr, nil
+}
+
 // traverseScan traverses all scans,
 // collects info of all scans and
 // and fills the arrays f.index2id and f.id2Index to make scans accessible

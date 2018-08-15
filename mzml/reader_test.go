@@ -1,6 +1,7 @@
 package mzml
 
 import (
+	"log"
 	"math"
 	"os"
 	"testing"
@@ -20,6 +21,7 @@ func TestAll1(t *testing.T) {
 	if err != nil {
 		t.Errorf("Read: error return %v", err)
 	}
+	//	log.Print("f.content.DataProcessingList :", f.content.DataProcessingList, "Count: ", f.content.DataProcessingList.Count)
 	p, err := f.ReadScan(0)
 	if err != nil {
 		t.Errorf("ReadScan: error return %v", err)
@@ -76,6 +78,13 @@ func TestAll1(t *testing.T) {
 	n := f.NumSpecs()
 	if n != 1 {
 		t.Errorf("NumSpecs: %d, should be 1", n)
+	}
+
+	instruments, err := f.MSInstruments()
+	if err != nil {
+		t.Errorf("MSInstruments: error return %v", err)
+	} else {
+		log.Printf("%+v\n", instruments)
 	}
 
 }
