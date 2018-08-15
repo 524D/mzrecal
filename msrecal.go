@@ -33,8 +33,8 @@ type params struct {
 	upRT              *float64 // upper rt window boundary
 	mzErrPPM          *float64 // max mass measurement error
 	scoreFilter       *string  // PSM score filter to apply
-	minMz             *int     // min m/z for calibrants
-	maxMz             *int     // max m/z for calibrants
+	minCharge         *int     // min m/z for calibrants
+	maxCharge         *int     // max m/z for calibrants
 }
 
 type calibrant struct {
@@ -321,13 +321,13 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 			// Make slice with mz values for all calibrants
 			// For efficiency, pre-allocate (more than) enough elements
 			mzCalibrants := make([]mzCalibrant, 0,
-				len(specCals)*(*par.maxMz-*par.minMz))
+				len(specCals)*(*par.maxCharge-*par.minCharge))
 			for j, cal := range specCals {
 				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
 				if cal.singleCharged {
 					mzCalibrants = append(mzCalibrants, newMzCalibrant(1, &specCals[j]))
 				} else {
-					for charge := *par.minMz; charge <= *par.maxMz; charge++ {
+					for charge := *par.minCharge; charge <= *par.maxCharge; charge++ {
 						mzCalibrants = append(mzCalibrants, newMzCalibrant(charge, &specCals[j]))
 					}
 				}
@@ -493,12 +493,12 @@ MS:1002257 (Comet:expectation value)
 MS:1001159 (SEQUEST:expectation value)
 MS:1002466 (PeptideShaker PSM score)
 `)
-	par.minMz = flag.Int("minmz",
+	par.minCharge = flag.Int("mincharge",
 		1,
-		"min m/z for calibrants\n")
-	par.maxMz = flag.Int("maxmz",
+		"min charge of calibrants\n")
+	par.maxCharge = flag.Int("maxcharge",
 		5,
-		"max m/z for calibrants\n")
+		"max charge of calibrants\n")
 
 	flag.Parse()
 	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
