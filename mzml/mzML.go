@@ -35,9 +35,44 @@ type Peak struct {
 	Intens float64
 }
 
+// The mzML content that we read. Not all fields are parsed,
+// but we need to store them in order to write the result mzML.
 type mzMLContent struct {
-	XMLName  xml.Name   `xml:"mzML"`
-	Spectrum []spectrum `xml:"run>spectrumList>spectrum"`
+	XMLName         xml.Name `xml:"mzML"`
+	CvList          cvList   `xml:"cvList"`
+	FileDescription struct {
+		FileDescriptionXML string `xml:",innerxml"`
+	} `xml:"fileDescription"`
+	ReferenceableParamGroupList *referenceableParamGroupList `xml:"referenceableParamGroupList,omitempty"`
+	SoftwareList                *softwareList                `xml:"softwareList,omitempty"`
+	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList,omitempty"`
+	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList,omitempty"`
+	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
+}
+
+type cvList struct {
+	Count     int    `xml:"count,attr"`
+	CvListXML []byte `xml:",innerxml"`
+}
+
+type referenceableParamGroupList struct {
+	Count                          int    `xml:"count,attr"`
+	ReferenceableParamGroupListXML []byte `xml:",innerxml"`
+}
+
+type softwareList struct {
+	Count           int    `xml:"count,attr"`
+	SoftwareListXML []byte `xml:",innerxml"`
+}
+
+type instrumentConfigurationList struct {
+	Count                          int    `xml:"count,attr"`
+	InstrumentConfigurationListXML []byte `xml:",innerxml"`
+}
+
+type dataProcessingList struct {
+	Count                 int    `xml:"count,attr"`
+	DataProcessingListXML []byte `xml:",innerxml"`
 }
 
 type spectrum struct {
