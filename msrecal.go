@@ -297,10 +297,40 @@ func newMzCalibrant(charge int, cal *calibrant) mzCalibrant {
 	return mzCal
 }
 
+func getRecalMethod(mzML *mzml.MzML) (string, error) {
+	instruments, err := mzML.MSInstruments()
+	if err != nil {
+		return ``, err
+	}
+	for _, instr := range instruments {
+		switch instr {
+		case `MS:1000079`:
+			{
+				return `FTICR`, nil
+			}
+		case `MS:1000084`:
+			{
+				return `TOF`, nil
+			}
+		case `MS:1000484`:
+			{
+				return `Orbitrap`, nil
+			}
+		}
+	}
+	return `NONE`, nil
+}
+
 func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
 	var recal recalParams
+	var err error
 
 	recal.MSRecalVersion = "1.0"
+	recal.RecalMethod, err = getRecalMethod(mzML)
+	if err != nil {
+		return recal, err
+	}
+
 	for i := 0; i < mzML.NumSpecs(); i++ {
 		msLevel, err := mzML.MSLevel(i)
 		if err != nil {
@@ -342,7 +372,8 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 			log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
 				i, len(mzCalibrants), len(mzMatchingCals))
 
-			specRecalPar, err := recalibrateSpec(i, mzMatchingCals, par)
+			specRecalPar, err := recalibrateSpec(i, recal.RecalMethod,
+				mzMatchingCals, par)
 			if err != nil {
 				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
 					i, err)
@@ -361,7 +392,7 @@ func mzCalibrantsMatchPeaks(peaks []mzml.Peak, mzCalibrants []mzCalibrant, par p
 
 	// For each potental calibrant, find highest peak within mz window
 
-	// Peaks in mzml probably always are sorted by mass, but that is not specified
+	// Peaks in mzml are probably always sorted by mass, but that is not specified
 	// by the schema/mzML description. Therefore, we must sort them now.
 	sort.Sort(peaksByMass(peaks))
 
