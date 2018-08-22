@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strconv"
 
-	"msrecal/mzidentml"
-	"msrecal/mzml"
+	"mzrecal/mzidentml"
+	"mzrecal/mzml"
 )
 
 const mergeMassTol = float64(1e-7)
@@ -57,7 +57,7 @@ type calibrant struct {
 type recalParams struct {
 	// Version of recalibration parameters, used when storing/loading
 	// parameters in JSON format for different version of the software
-	MSRecalVersion string
+	MzRecalVersion string
 	RecalMethod    string // Recalibraion method used (TOF/FTICR/Orbitrap)
 	SpecRecalPar   []specRecalParams
 }
@@ -334,7 +334,7 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 	var err error
 	var recalMethod int
 
-	recal.MSRecalVersion = "1.0"
+	recal.MzRecalVersion = "1.0"
 	recalMethod, recal.RecalMethod, err = getRecalMethod(mzML)
 	if err != nil {
 		return recal, err
