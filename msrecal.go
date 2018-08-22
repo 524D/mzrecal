@@ -22,6 +22,14 @@ import (
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
+// The calibration types that we can handle
+const (
+	calibNone = iota
+	calibFTICR
+	calibTOF
+	calibOrbitrap
+)
+
 // Command line parameters
 type params struct {
 	mzMLFilename      *string
@@ -297,36 +305,37 @@ func newMzCalibrant(charge int, cal *calibrant) mzCalibrant {
 	return mzCal
 }
 
-func getRecalMethod(mzML *mzml.MzML) (string, error) {
+func getRecalMethod(mzML *mzml.MzML) (int, string, error) {
 	instruments, err := mzML.MSInstruments()
 	if err != nil {
-		return ``, err
+		return 0, ``, err
 	}
 	for _, instr := range instruments {
 		switch instr {
 		case `MS:1000079`:
 			{
-				return `FTICR`, nil
+				return calibFTICR, `FTICR`, nil
 			}
 		case `MS:1000084`:
 			{
-				return `TOF`, nil
+				return calibTOF, `TOF`, nil
 			}
 		case `MS:1000484`:
 			{
-				return `Orbitrap`, nil
+				return calibOrbitrap, `Orbitrap`, nil
 			}
 		}
 	}
-	return `NONE`, nil
+	return calibNone, `NONE`, nil
 }
 
 func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
+	var recalMethod int
 
 	recal.MSRecalVersion = "1.0"
-	recal.RecalMethod, err = getRecalMethod(mzML)
+	recalMethod, recal.RecalMethod, err = getRecalMethod(mzML)
 	if err != nil {
 		return recal, err
 	}
@@ -372,7 +381,7 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 			log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
 				i, len(mzCalibrants), len(mzMatchingCals))
 
-			specRecalPar, err := recalibrateSpec(i, recal.RecalMethod,
+			specRecalPar, err := recalibrateSpec(i, recalMethod,
 				mzMatchingCals, par)
 			if err != nil {
 				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
@@ -383,7 +392,6 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 		}
 	}
-
 	return recal, nil
 }
 

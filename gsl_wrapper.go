@@ -14,13 +14,13 @@ package main
 // #include <gsl/gsl_blas.h>
 // #include <gsl/gsl_multifit_nlin.h>
 //
-// // COPIED/MODIFIED FROM MSRECAL/RECAL_FUNCTIONS.C
+// // Based on MSRECAL/RECAL_FUNCTIONS.C
 //
-// typedef enum {
-//    RECAL_FTICR,
-//    RECAL_TOF,
-//    RECAL_ORBITRAP
-// } recal_method_t;
+// // RECAL_ items below will be initialized in Go init(), to keep
+// // C values aligned with Go
+// int RECAL_FTICR;
+// int RECAL_TOF;
+// int RECAL_ORBITRAP;
 //
 // // The maximum number of calibration parameters of any calibration function
 // #define MAX_CAL_PARS 10
@@ -101,7 +101,7 @@ package main
 // 	return GSL_SUCCESS;
 // }
 //
-// spec_cal_result_t recalibratePeaks(recal_method_t recal_method,
+// spec_cal_result_t recalibratePeaks(int recal_method,
 //                                    calibrant *calibrant_list,
 //                                    int n_calibrants,
 //                                    int min_cal, int spec_nr){
@@ -190,41 +190,27 @@ package main
 // }
 import "C"
 import (
-	"errors"
 	"unsafe"
 )
 
-func recalibrateSpec(specNr int, recalMethod string,
+func init() {
+	C.RECAL_FTICR = calibFTICR
+	C.RECAL_TOF = calibTOF
+	C.RECAL_ORBITRAP = calibOrbitrap
+}
+
+func recalibrateSpec(specNr int, recalMethod int,
 	mzCalibrants []mzCalibrant, par params) (specRecalParams, error) {
 	var specRecalPar specRecalParams
-	var recalMeth C.recal_method_t
 
 	specRecalPar.SpecNr = specNr
 
-	switch recalMethod {
-	case `FTICR`:
-		{
-			recalMeth = C.RECAL_FTICR
-		}
-	case `TOF`:
-		{
-			recalMeth = C.RECAL_TOF
-		}
-	case `Orbitrap`:
-		{
-			recalMeth = C.RECAL_ORBITRAP
-		}
-	default:
-		{
-			return specRecalPar, errors.New("recalMethod invalid: " + recalMethod)
-		}
-	}
 	// FIXME: Handle out of memory for malloc (not sure if it returns nil or panics...)
 	calibrantList := (*C.calibrant)(C.malloc(C.ulong(C.sizeof_calibrant * len(mzCalibrants))))
 	for i, calibrant := range mzCalibrants {
 		C.fill_calibrant_list(calibrantList, C.int(i), C.double(calibrant.mz), C.double(calibrant.mzMeasured))
 	}
-	specCalResult, _ := C.recalibratePeaks(recalMeth, calibrantList,
+	specCalResult, _ := C.recalibratePeaks(C.int(recalMethod), calibrantList,
 		C.int(len(mzCalibrants)), C.int(*par.minCal), C.int(specNr))
 	C.free(unsafe.Pointer(calibrantList))
 	if int(specCalResult.satisfied) != 0 {
