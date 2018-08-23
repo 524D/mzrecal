@@ -16,11 +16,13 @@ package main
 //
 // // Based on MSRECAL/RECAL_FUNCTIONS.C
 //
-// // RECAL_ items below will be initialized in Go init(), to keep
-// // C values aligned with Go
-// int RECAL_FTICR;
-// int RECAL_TOF;
-// int RECAL_ORBITRAP;
+// // WARNING: the following enum must stay consistent with the iota in mzrecal.go
+// typedef enum {
+//  CALIB_NONE,
+//  CALIB_FTICR,
+// 	CALIB_TOF,
+//	CALIB_ORBITRAP,
+// } calib_method_t;
 //
 // // The maximum number of calibration parameters of any calibration function
 // #define MAX_CAL_PARS 10
@@ -193,19 +195,13 @@ import (
 	"unsafe"
 )
 
-func init() {
-	C.RECAL_FTICR = calibFTICR
-	C.RECAL_TOF = calibTOF
-	C.RECAL_ORBITRAP = calibOrbitrap
-}
-
 func recalibrateSpec(specNr int, recalMethod int,
 	mzCalibrants []mzCalibrant, par params) (specRecalParams, error) {
 	var specRecalPar specRecalParams
 
 	specRecalPar.SpecNr = specNr
 
-	// FIXME: Handle out of memory for malloc (not sure if it returns nil or panics...)
+	// FIXME: Handle out of memory for C.malloc (not sure if it returns nil or panics...)
 	calibrantList := (*C.calibrant)(C.malloc(C.ulong(C.sizeof_calibrant * len(mzCalibrants))))
 	for i, calibrant := range mzCalibrants {
 		C.fill_calibrant_list(calibrantList, C.int(i), C.double(calibrant.mz), C.double(calibrant.mzMeasured))

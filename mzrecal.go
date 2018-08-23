@@ -23,6 +23,7 @@ const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
 // The calibration types that we can handle
+// WARNING: This must be consistent with C enum calib_method_t in gsl_wrapper.go
 const (
 	calibNone = iota
 	calibFTICR
@@ -58,7 +59,7 @@ type recalParams struct {
 	// Version of recalibration parameters, used when storing/loading
 	// parameters in JSON format for different version of the software
 	MzRecalVersion string
-	RecalMethod    string // Recalibraion method used (TOF/FTICR/Orbitrap)
+	RecalMethod    string // Recalibration method used (TOF/FTICR/Orbitrap)
 	SpecRecalPar   []specRecalParams
 }
 
