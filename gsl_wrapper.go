@@ -21,8 +21,8 @@ package main
 typedef enum {
     CALIB_NONE,
     CALIB_FTICR,
-	   CALIB_TOF,
-	   CALIB_ORBITRAP,
+    CALIB_TOF,
+    CALIB_ORBITRAP,
 } calib_method_t;
 
 // The maximum number of calibration parameters of any calibration function
@@ -80,8 +80,8 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 {
     double *y = ((mz_data *)params)->y;
     int n_calibrants = ((mz_data *)params)->n_calibrants;
-	   double a = gsl_vector_get (x, 0);
-	   double b = gsl_vector_get (x, 1);
+    double a = gsl_vector_get (x, 0);
+    double b = gsl_vector_get (x, 1);
     size_t i;
 
     for (i=0;i<n_calibrants;i++) {
@@ -95,7 +95,7 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
 {
 	   calib_f (x,params,f);
-    calib_df (x,params,J);
+     calib_df (x,params,J);
 	   return GSL_SUCCESS;
 }
 
@@ -106,14 +106,14 @@ spec_cal_result_t recalibratePeaks(int recal_method,
     int status, SATISFIED, j;
 
     const gsl_multifit_fdfsolver_type *T;
-	   gsl_multifit_fdfsolver *s;
-	   double chi;
+    gsl_multifit_fdfsolver *s;
+    double chi;
     int iter=0;
-	   const size_t pp=2; // number of free parameters in calibration function
-	   double y[MAX_CALIBRANTS];
-	   double mz2[MAX_CALIBRANTS];
-	   mz_data d={0,y,mz2};
-	   double x_init[2]={1.0,0.0}; // start here, close to minimum if reasonably calibrated beforehand
+    const size_t pp=2; // number of free parameters in calibration function
+    double y[MAX_CALIBRANTS];
+    double mz2[MAX_CALIBRANTS];
+    mz_data d={0,y,mz2};
+    double x_init[2]={1.0,0.0}; // start here, close to minimum if reasonably calibrated beforehand
     double Ca, Cb;
     spec_cal_result_t spec_cal_result;
 
@@ -125,7 +125,7 @@ spec_cal_result_t recalibratePeaks(int recal_method,
 
     SATISFIED=0;
     while (n_calibrants >= min_cal && !SATISFIED) {
-    	   // least-squares fit first using all peaks, than removing those that don't fit
+        // least-squares fit first using all peaks, than removing those that don't fit
         for (j=0;j<n_calibrants;j++) {
             d.y[j] = 1 / calibrant_list[j].mz_meas;
             d.mz2[j] = calibrant_list[j].mz_calc;
@@ -176,15 +176,15 @@ spec_cal_result_t recalibratePeaks(int recal_method,
     else {
         spec_cal_result.nr_cal_pars = 0;
     }
-	   return spec_cal_result;
+    return spec_cal_result;
 }
 
 // Function fill_calibrant_list is only needed because directly filling
 // a C "pointer array" from Go is a bit messy.
 void fill_calibrant_list(calibrant *calibrant_list, int i,
-	                        double mz_calc, double mz_measured) {
-		 calibrant_list[i].mz_calc = mz_calc;
-		 calibrant_list[i].mz_meas = mz_measured;
+                         double mz_calc, double mz_measured) {
+    calibrant_list[i].mz_calc = mz_calc;
+    calibrant_list[i].mz_meas = mz_measured;
 }
 */
 import "C"
