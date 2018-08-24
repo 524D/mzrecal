@@ -25,52 +25,110 @@ typedef enum {
     CALIB_ORBITRAP,
 } calib_method_t;
 
+// FIXME: Change this constant to a parameter
+#define INTERNAL_CALIBRATION_TARGET 3e-6	//discard internal calibrants that do not fit CAL2 better than this
+
 // The maximum number of calibration parameters of any calibration function
 #define MAX_CAL_PARS 10
 
+// Maximum number of iterations fro the FDF solver
+#define MAX_FDF_SOLVER_ITER 500
+
+// The cal_params_t contains the result of the recalibration
 typedef struct {
-    int satisfied;
-    int nr_cal_pars;
-    double cal_pars[MAX_CAL_PARS];
-} spec_cal_result_t;
+    calib_method_t calib_method;
+    int            nr_cal_pars;
+    double         cal_pars[MAX_CAL_PARS];
+} cal_params_t;
 
 // Calibrant description type
 typedef struct {
     double mz_calc; // calculated m/z
     double mz_meas; // measured m/z
-    double intensity;
-} calibrant;
-
+} calibrant_t;
 
 typedef struct {
-    int      n_calibrants;
-    double * y; // measured f (in phony units)
-    double * mz2; // theoretical m/z
-} mz_data;
+    calib_method_t calib_method;
+    int            n_calibrants;
+    calibrant_t *  calibrants;
+} recal_data_t;
 
-// FIXME: Fixed size arrays: This sucks!
-#define MAX_CALIBRANTS 10000
-#define INTERNAL_CALIBRATION_TARGET 3e-6	//discard internal calibrants that do not fit CAL2 better than this
-
-double mz_recal(double mz_meas, double Ca, double Cb)
+double mz_recalX(double mz_meas, cal_params_t *p)
 {
-    return Ca/((1/mz_meas)-Cb);
+    double mz_calib;
+    switch (p->calib_method) {
+    case CALIB_FTICR:
+        // mz_calib = Ca/((1/mz_meas)-Cb)
+        mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
+        break;
+    case CALIB_TOF: // FIXME: implement correct calib function
+        mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
+        break;
+    case CALIB_ORBITRAP:  // FIXME: implement correct calib function
+        mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
+        break;
+    default:
+        mz_calib = mz_meas;
+        break;
+    }
+    return mz_calib;
 }
 
 int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 {
-    double *y = ((mz_data *)params)->y;
-    double *mz = ((mz_data *)params)->mz2;
-    int n_calibrants = ((mz_data *)params)->n_calibrants;
-    double a = gsl_vector_get (x, 0);
-    double b = gsl_vector_get (x, 1);
-    double M;
-    size_t i;
+    recal_data_t *recal_data_p = (recal_data_t *)params;
 
-    for (i=0;i<n_calibrants;i++) {
-	       // Model m = a/(f-b) (CAL2 inverted)
-		     M = a/(y[i]-b);
-		     gsl_vector_set (f, i, (M-mz[i])); // absolute or relative error?
+    calibrant_t *calibrants = recal_data_p->calibrants;
+    int n_calibrants = recal_data_p->n_calibrants;
+
+    switch (recal_data_p->calib_method) {
+    case CALIB_FTICR: {
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double M;
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            // Model m = a/(f-b) (CAL2 inverted)
+            freq= 1/calibrants[i].mz_meas;
+            M = a/(freq-b);
+            gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+        }
+        break;
+    }
+    case CALIB_TOF: { // FIXME: implement correct function
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double M;
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            // Model m = a/(f-b) (CAL2 inverted)
+            freq= 1/calibrants[i].mz_meas;
+            M = a/(freq-b);
+            gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+        }
+        break;
+    }
+    case CALIB_ORBITRAP: { // FIXME: implement correct function
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double M;
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            // Model m = a/(f-b) (CAL2 inverted)
+            freq= 1/calibrants[i].mz_meas;
+            M = a/(freq-b);
+           gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+        }
+        break;
+     }
+     default:
+         break;
      }
      return GSL_SUCCESS;
 }
@@ -78,15 +136,53 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 // DF calibrator
 int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 {
-    double *y = ((mz_data *)params)->y;
-    int n_calibrants = ((mz_data *)params)->n_calibrants;
-    double a = gsl_vector_get (x, 0);
-    double b = gsl_vector_get (x, 1);
-    size_t i;
+    recal_data_t *recal_data_p = (recal_data_t *)params;
 
-    for (i=0;i<n_calibrants;i++) {
-        gsl_matrix_set (J,i,0, 1/(y[i]-b) );
-        gsl_matrix_set (J,i,1, a/((y[i]-b)*(y[i]-b)) );
+    calibrant_t *calibrants = recal_data_p->calibrants;
+    int n_calibrants = recal_data_p->n_calibrants;
+
+    switch (recal_data_p->calib_method) {
+    case CALIB_FTICR: {
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            freq=1/calibrants[i].mz_meas;
+            gsl_matrix_set (J,i,0, 1/(freq-b) );
+            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+        }
+        break;
+    }
+    case CALIB_TOF: { // FIXME: implement correct function
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            freq=1/calibrants[i].mz_meas;
+            gsl_matrix_set (J,i,0, 1/(freq-b) );
+            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+        }
+       break;
+    }
+    case CALIB_ORBITRAP: { // FIXME: implement correct function
+        double a = gsl_vector_get (x, 0);
+        double b = gsl_vector_get (x, 1);
+        double freq;
+        size_t i;
+
+        for (i=0;i<n_calibrants;i++) {
+            freq=1/calibrants[i].mz_meas;
+            gsl_matrix_set (J,i,0, 1/(freq-b) );
+            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+        }
+        break;
+    }
+    default:
+        break;
     }
     return GSL_SUCCESS;
 }
@@ -94,49 +190,69 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 // FDF Calibrator
 int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
 {
-	   calib_f (x,params,f);
+     calib_f (x,params,f);
      calib_df (x,params,J);
-	   return GSL_SUCCESS;
+     return GSL_SUCCESS;
 }
 
-spec_cal_result_t recalibratePeaks(int recal_method,
-                                   calibrant *calibrant_list,
-                                   int n_calibrants,
+void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
+    cal_params->calib_method = calib_method;
+    // Initialize calibration paramters close to the optimum
+    switch (calib_method) {
+    case CALIB_FTICR:
+        cal_params->cal_pars[0] = 1.0;
+        cal_params->cal_pars[1] = 0.0;
+        cal_params->nr_cal_pars = 2;
+        break;
+    case CALIB_TOF:
+    // FIXME: fill in correct init parameters
+        cal_params->cal_pars[0] = 1.0;
+        cal_params->cal_pars[1] = 0.0;
+        cal_params->nr_cal_pars = 2;
+        break;
+    case CALIB_ORBITRAP:
+    // FIXME: fill in correct init parameters
+        cal_params->cal_pars[0] = 1.0;
+        cal_params->cal_pars[1] = 0.0;
+        cal_params->nr_cal_pars = 2;
+        break;
+    default:
+     		cal_params->nr_cal_pars = 0;
+    break;
+    }
+}
+
+cal_params_t recalibratePeaks(recal_data_t d,
                                    int min_cal, int spec_nr){
-    int status, SATISFIED, j;
+    int status, satisfied, j, vi;
 
     const gsl_multifit_fdfsolver_type *T;
     gsl_multifit_fdfsolver *s;
     double chi;
     int iter=0;
-    const size_t pp=2; // number of free parameters in calibration function
-    double y[MAX_CALIBRANTS];
-    double mz2[MAX_CALIBRANTS];
-    mz_data d={0,y,mz2};
-    double x_init[2]={1.0,0.0}; // start here, close to minimum if reasonably calibrated beforehand
-    double Ca, Cb;
-    spec_cal_result_t spec_cal_result;
+    cal_params_t cal_params;
+
+    init_cal_params(&cal_params, d.calib_method);
 
     gsl_multifit_function_fdf func;
-    gsl_vector_view x=gsl_vector_view_array(x_init,pp);
+
+    // ??? The array fed to gsl_vector_view_array needs to be a copy
+    // otherwise the result is not the same
+    cal_params_t cal_params_copy = cal_params;
+    gsl_vector_view x=gsl_vector_view_array(cal_params_copy.cal_pars,cal_params.nr_cal_pars);
+
     func.f = &calib_f;
     func.df = &calib_df;
     func.fdf = &calib_fdf;
 
-    SATISFIED=0;
-    while (n_calibrants >= min_cal && !SATISFIED) {
+    satisfied=0;
+    while (d.n_calibrants >= min_cal && !satisfied) {
         // least-squares fit first using all peaks, than removing those that don't fit
-        for (j=0;j<n_calibrants;j++) {
-            d.y[j] = 1 / calibrant_list[j].mz_meas;
-            d.mz2[j] = calibrant_list[j].mz_calc;
-        }
-        d.n_calibrants = n_calibrants;
-
         iter=0;
         T = gsl_multifit_fdfsolver_lmder;
-        s = gsl_multifit_fdfsolver_alloc (T, n_calibrants, pp); // pp = 2 parameters, Ca and Cb
-        func.n = n_calibrants;
-        func.p = pp;
+        s = gsl_multifit_fdfsolver_alloc (T, d.n_calibrants, cal_params.nr_cal_pars);
+        func.n = d.n_calibrants;
+        func.p = cal_params.nr_cal_pars;
         func.params = &d;
         gsl_multifit_fdfsolver_set(s,&func,&x.vector);
 
@@ -147,41 +263,41 @@ spec_cal_result_t recalibratePeaks(int recal_method,
             if (status)
                 break;
             status=gsl_multifit_test_delta (s->dx, s->x, 1e-9, 1e-9);
-        } while (status==GSL_CONTINUE && iter<500);
+        } while (status==GSL_CONTINUE && iter<MAX_FDF_SOLVER_ITER);
 
-        Ca = gsl_vector_get(s->x,0);
-        Cb = gsl_vector_get(s->x,1);
+        for (vi=0; vi<cal_params.nr_cal_pars; vi++) {
+            cal_params.cal_pars[vi] = gsl_vector_get(s->x,vi);
+        }
+
         chi = gsl_blas_dnrm2(s->f);
         gsl_multifit_fdfsolver_free(s);
 
         // OK, that was one internal recalibration, now lets check if all calibrants are < INTERNAL_CALIBRATION_TARGET, if not, throw these out
         // and recalibrate (as long as we have at least min_cal peaks)
         int accepted_idx = 0;
-        for(j=0; j<n_calibrants; j++) {
-            if (fabs((calibrant_list[j].mz_calc-mz_recal(calibrant_list[j].mz_meas, Ca, Cb))/calibrant_list[j].mz_calc)<INTERNAL_CALIBRATION_TARGET) {
-                calibrant_list[accepted_idx++] = calibrant_list[j];
+        for(j=0; j<d.n_calibrants; j++) {
+            double mz_calc = d.calibrants[j].mz_calc;
+            double mz_meas = d.calibrants[j].mz_meas;
+            double mz_recal = mz_recalX(mz_meas, &cal_params);
+            if (fabs((mz_calc-mz_recal)/mz_calc)<INTERNAL_CALIBRATION_TARGET) {
+                d.calibrants[accepted_idx++] = d.calibrants[j];
             }
         }
-        if (accepted_idx == n_calibrants) {
-            SATISFIED=1; // all calibrants < INTERNAL_CALIBRATION_TARGET
+        // If all (remaining) calibrants are accepted, we are done
+        if (accepted_idx == d.n_calibrants) {
+            satisfied=1; // all calibrants < INTERNAL_CALIBRATION_TARGET
         }
-        n_calibrants=accepted_idx;
+        d.n_calibrants=accepted_idx;
     }
-    spec_cal_result.satisfied = SATISFIED;
-    if (SATISFIED) {
-        spec_cal_result.cal_pars[0] = Ca;
-        spec_cal_result.cal_pars[1] = Cb;
-        spec_cal_result.nr_cal_pars = 2;
+    if (!satisfied) {
+        cal_params.nr_cal_pars = -1;
     }
-    else {
-        spec_cal_result.nr_cal_pars = 0;
-    }
-    return spec_cal_result;
+    return cal_params;
 }
 
 // Function fill_calibrant_list is only needed because directly filling
 // a C "pointer array" from Go is a bit messy.
-void fill_calibrant_list(calibrant *calibrant_list, int i,
+void fill_calibrant_list(calibrant_t *calibrant_list, int i,
                          double mz_calc, double mz_measured) {
     calibrant_list[i].mz_calc = mz_calc;
     calibrant_list[i].mz_meas = mz_measured;
@@ -199,17 +315,19 @@ func recalibrateSpec(specNr int, recalMethod int,
 	specRecalPar.SpecNr = specNr
 
 	// FIXME: Handle out of memory for C.malloc (not sure if it returns nil or panics...)
-	calibrantList := (*C.calibrant)(C.malloc(C.ulong(C.sizeof_calibrant * len(mzCalibrants))))
+	calibrantList := (*C.calibrant_t)(C.malloc(C.ulong(C.sizeof_calibrant_t * len(mzCalibrants))))
 	for i, calibrant := range mzCalibrants {
 		C.fill_calibrant_list(calibrantList, C.int(i), C.double(calibrant.mz), C.double(calibrant.mzMeasured))
 	}
-	specCalResult, _ := C.recalibratePeaks(C.int(recalMethod), calibrantList,
-		C.int(len(mzCalibrants)), C.int(*par.minCal), C.int(specNr))
+	var recalData C.recal_data_t
+	recalData.calib_method = C.calib_method_t(recalMethod)
+	recalData.n_calibrants = C.int(len(mzCalibrants))
+	recalData.calibrants = calibrantList
+	specCalResult, _ := C.recalibratePeaks(recalData,
+		C.int(*par.minCal), C.int(specNr))
 	C.free(unsafe.Pointer(calibrantList))
-	if int(specCalResult.satisfied) != 0 {
-		for i := 0; i < int(specCalResult.nr_cal_pars); i++ {
-			specRecalPar.P = append(specRecalPar.P, float64(specCalResult.cal_pars[i]))
-		}
+	for i := 0; i < int(specCalResult.nr_cal_pars); i++ {
+		specRecalPar.P = append(specRecalPar.P, float64(specCalResult.cal_pars[i]))
 	}
 	return specRecalPar, nil
 }
