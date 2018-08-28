@@ -36,9 +36,10 @@ typedef enum {
 
 // The cal_params_t contains the result of the recalibration
 typedef struct {
-    calib_method_t calib_method;
-    int            nr_cal_pars;
-    double         cal_pars[MAX_CAL_PARS];
+    calib_method_t calib_method;  // The calibration method
+    int            nr_cal_pars;   // Number of parameters for this method
+    double         cal_pars[MAX_CAL_PARS]; // The actual parameters
+    int            n_calibrants;  // Number of calibrants used for result
 } cal_params_t;
 
 // Calibrant description type
@@ -64,9 +65,12 @@ double mz_recalX(double mz_meas, cal_params_t *p)
     case CALIB_TOF: // FIXME: implement correct calib function
         mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
         break;
-    case CALIB_ORBITRAP:  // FIXME: implement correct calib function
-        mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
+    case CALIB_ORBITRAP: { // FIXME: implement correct calib function
+        // mz_calib = A/(f*f) = A / (1/sqrt(mz_meas) * 1/sqrt(mz_meas))
+        //          = A*mz_meas
+        mz_calib = p->cal_pars[0]*mz_meas;
         break;
+    }
     default:
         mz_calib = mz_meas;
         break;
@@ -114,16 +118,15 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
     }
     case CALIB_ORBITRAP: { // FIXME: implement correct function
         double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
-        double M;
+        double mz_calib;
         double freq;
         size_t i;
 
         for (i=0;i<n_calibrants;i++) {
-            // Model m = a/(f-b) (CAL2 inverted)
-            freq= 1/calibrants[i].mz_meas;
-            M = a/(freq-b);
-           gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+            // Model m = a/(f*f) (CAL2 inverted)
+            //         = a*mz_meas
+            mz_calib = a*calibrants[i].mz_meas;
+            gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
         }
         break;
      }
@@ -170,14 +173,10 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
     }
     case CALIB_ORBITRAP: { // FIXME: implement correct function
         double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
-        double freq;
         size_t i;
 
         for (i=0;i<n_calibrants;i++) {
-            freq=1/calibrants[i].mz_meas;
-            gsl_matrix_set (J,i,0, 1/(freq-b) );
-            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+            gsl_matrix_set (J,i,0, calibrants[i].mz_meas );
         }
         break;
     }
@@ -211,10 +210,8 @@ void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
         cal_params->nr_cal_pars = 2;
         break;
     case CALIB_ORBITRAP:
-    // FIXME: fill in correct init parameters
         cal_params->cal_pars[0] = 1.0;
-        cal_params->cal_pars[1] = 0.0;
-        cal_params->nr_cal_pars = 2;
+        cal_params->nr_cal_pars = 1;
         break;
     default:
      		cal_params->nr_cal_pars = 0;
@@ -289,8 +286,10 @@ cal_params_t recalibratePeaks(recal_data_t d,
         }
         d.n_calibrants=accepted_idx;
     }
+    cal_params.n_calibrants = d.n_calibrants;
     if (!satisfied) {
         cal_params.nr_cal_pars = -1;
+        cal_params.n_calibrants = 0;
     }
     return cal_params;
 }
@@ -309,7 +308,8 @@ import (
 )
 
 func recalibrateSpec(specNr int, recalMethod int,
-	mzCalibrants []mzCalibrant, par params) (specRecalParams, error) {
+	mzCalibrants []mzCalibrant, par params) (
+	specRecalParams, int, error) {
 	var specRecalPar specRecalParams
 
 	specRecalPar.SpecNr = specNr
@@ -329,5 +329,6 @@ func recalibrateSpec(specNr int, recalMethod int,
 	for i := 0; i < int(specCalResult.nr_cal_pars); i++ {
 		specRecalPar.P = append(specRecalPar.P, float64(specCalResult.cal_pars[i]))
 	}
-	return specRecalPar, nil
+	calibrantsUsed := int(specCalResult.n_calibrants)
+	return specRecalPar, calibrantsUsed, nil
 }

@@ -314,17 +314,11 @@ func getRecalMethod(mzML *mzml.MzML) (int, string, error) {
 	for _, instr := range instruments {
 		switch instr {
 		case `MS:1000079`:
-			{
-				return calibFTICR, `FTICR`, nil
-			}
+			return calibFTICR, `FTICR`, nil
 		case `MS:1000084`:
-			{
-				return calibTOF, `TOF`, nil
-			}
+			return calibTOF, `TOF`, nil
 		case `MS:1000484`:
-			{
-				return calibOrbitrap, `Orbitrap`, nil
-			}
+			return calibOrbitrap, `Orbitrap`, nil
 		}
 	}
 	return calibNone, `NONE`, nil
@@ -379,18 +373,16 @@ func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, er
 					i, err)
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
-			log.Printf("%d nr mzCalibrants: %d mzMatchingCals %d",
-				i, len(mzCalibrants), len(mzMatchingCals))
 
-			specRecalPar, err := recalibrateSpec(i, recalMethod,
+			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
 				mzMatchingCals, par)
 			if err != nil {
 				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
 					i, err)
-			} else {
-
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
+			log.Printf("Spec %d retention match %d mz match %d calib used %d",
+				i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
 	return recal, nil
