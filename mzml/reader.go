@@ -43,14 +43,27 @@ func Read(reader io.Reader) (MzML, error) {
 		}
 	}
 
-	// err := mzML.decoder.Decode(&mzML.content)
-	// if err != nil {
-	// 	return mzML, err
-	// }
 	err := mzML.traverseScan()
+	// Don't know why cleaning up the namespace is needed, but Go's XML
+	// parser puts crap there
+	//	mzML.cleanNamespaceAttrs()
 	return mzML, err
 }
 
+// cleanNamespaceAttrs removes name space related attributes that are
+// made up by Go's XML parser
+// func (f *MzML) cleanNamespaceAttrs() {
+// 	var newAttrs []xml.Attr
+// 	// for i, attr := range f.content.Attrs {
+// 	// 	if attr == xml.Attr{Name : "x", Value:"y"} {
+// 	// 		newAtrrs = append(newAttrs, attr)
+// 	// 	}
+// 	// }
+// 	f.content.Attrs = newAttrs
+// }
+
+// binaryDataPars decodes the CV terms in a mzML binarydata section
+//
 // CV Terms for binary data compression
 // MS:1000574 zlib compression
 // MS:1000576 No Compression
@@ -60,16 +73,16 @@ func Read(reader io.Reader) (MzML, error) {
 // MS:1002746 MS-Numpress linear prediction compression followed by zlib compression
 // MS:1002747 MS-Numpress positive integer compression followed by zlib compression
 // MS:1002748 MS-Numpress short logged float compression followed by zlib compression
-
+//
 // CV Terms for binary data array types
 // MS:1000514 m/z array
 // MS:1000515 intensity array
-
+//
 // CV Terms for binary-data-type
 // MS:1000521 32-bit float
 // MS:1000523 64-bit float
-
-func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
+func binaryDataPars(binaryDataArray *binaryDataArray) (
+	bool, bool, bool, bool, error) {
 	zlibCompression := bool(false) // Default: no compression
 	bits64 := bool(false)          // Default: 32 bits
 	mzArray := bool(false)
@@ -90,6 +103,12 @@ func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
 			log.Fatalf("Compression type not supported (CV term %s", cvParam.Accession)
 		}
 	}
+	return zlibCompression, bits64, mzArray, intensityArray, nil
+}
+
+func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
+	zlibCompression, bits64, mzArray, intensityArray, _ :=
+		binaryDataPars(binaryDataArray)
 	// We are only interrested in mz and intensity
 	if mzArray || intensityArray {
 		data, err := base64.StdEncoding.DecodeString(binaryDataArray.Binary)
@@ -154,16 +173,18 @@ func (f *MzML) RetentionTime(scanIndex int) (float64, error) {
 	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
 		return 0.0, ErrInvalidScanIndex
 	}
-	for _, cvParam := range f.content.Spectrum[scanIndex].ScanCvParam {
-		if cvParam.Accession == "MS:1000016" {
-			retentionTime, err := strconv.ParseFloat(cvParam.Value, 64)
-			// Check if the retention time is in minutes, otherwise assume it's seconds
-			if cvParam.UnitAccession == "UO:0000031" ||
-				cvParam.UnitAccession == "MS:1000038" {
-				retentionTime *= 60
-			}
+	for _, scan := range f.content.Spectrum[scanIndex].ScanList.Scan {
+		for _, cvParam := range scan.CvParam {
+			if cvParam.Accession == "MS:1000016" {
+				retentionTime, err := strconv.ParseFloat(cvParam.Value, 64)
+				// Check if the retention time is in minutes, otherwise assume it's seconds
+				if cvParam.UnitAccession == "UO:0000031" ||
+					cvParam.UnitAccession == "MS:1000038" {
+					retentionTime *= 60
+				}
 
-			return retentionTime, err
+				return retentionTime, err
+			}
 		}
 	}
 	return -1.0, nil
@@ -181,8 +202,8 @@ func (f *MzML) ReadScan(scanIndex int) ([]Peak, error) {
 	}
 	p := make([]Peak, f.content.Spectrum[scanIndex].DefaultArrayLength)
 	var err error
-	for i := range f.content.Spectrum[scanIndex].BinaryDataArray {
-		p, err = fillScan(p, &f.content.Spectrum[scanIndex].BinaryDataArray[i])
+	for _, b := range f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
+		p, err = fillScan(p, &b)
 		if err != nil {
 			return p, err
 

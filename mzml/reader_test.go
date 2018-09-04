@@ -20,60 +20,61 @@ func TestAll1(t *testing.T) {
 	f, err := Read(x)
 	if err != nil {
 		t.Errorf("Read: error return %v", err)
-	}
-	//	log.Print("f.content.DataProcessingList :", f.content.DataProcessingList, "Count: ", f.content.DataProcessingList.Count)
-	p, err := f.ReadScan(0)
-	if err != nil {
-		t.Errorf("ReadScan: error return %v", err)
-	}
-	if p[0].Mz < 699.695 || p[0].Mz > 699.696 {
-		t.Errorf("ReadScan: peak 0 mz %v", p[0].Mz)
-	}
-	// log.Printf("%+v", p)
-	centroid, err := f.Centroid(0)
-	if err != nil {
-		t.Errorf("Centroid: error return %v", err)
-	}
-	if centroid {
-		t.Errorf("Centroid: true, should be false")
-	}
-	_, err = f.Centroid(1)
-	if err != ErrInvalidScanIndex {
-		t.Errorf("Centroid: error return %v, should be ErrInvalidScanIndex", err)
-	}
-	msLevel, err := f.MSLevel(0)
-	if err != nil {
-		t.Errorf("MSLevel: error return %v", err)
-	}
-	if msLevel != 1 {
-		t.Errorf("MSLevel: %d, should be 1", msLevel)
-	}
-	_, err = f.MSLevel(1)
-	if err != ErrInvalidScanIndex {
-		t.Errorf("MSLevel: error return %v, should be ErrInvalidScanIndex", err)
-	}
+	} else {
+		//	log.Print("f.content.DataProcessingList :", f.content.DataProcessingList, "Count: ", f.content.DataProcessingList.Count)
+		p, err := f.ReadScan(0)
+		if err != nil {
+			t.Errorf("ReadScan: error return %v", err)
+		}
+		if p[0].Mz < 699.695 || p[0].Mz > 699.696 {
+			t.Errorf("ReadScan: peak 0 mz %v", p[0].Mz)
+		}
+		// log.Printf("%+v", p)
+		centroid, err := f.Centroid(0)
+		if err != nil {
+			t.Errorf("Centroid: error return %v", err)
+		}
+		if centroid {
+			t.Errorf("Centroid: true, should be false")
+		}
+		_, err = f.Centroid(1)
+		if err != ErrInvalidScanIndex {
+			t.Errorf("Centroid: error return %v, should be ErrInvalidScanIndex", err)
+		}
+		msLevel, err := f.MSLevel(0)
+		if err != nil {
+			t.Errorf("MSLevel: error return %v", err)
+		}
+		if msLevel != 1 {
+			t.Errorf("MSLevel: %d, should be 1", msLevel)
+		}
+		_, err = f.MSLevel(1)
+		if err != ErrInvalidScanIndex {
+			t.Errorf("MSLevel: error return %v, should be ErrInvalidScanIndex", err)
+		}
 
-	_, err = f.ScanIndex(`file=sourceFile1`)
-	if err != ErrInvalidScanId {
-		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
-	}
-	scanIndex, err := f.ScanIndex(`file=sourceFile`)
-	if err != nil {
-		t.Errorf("ScanIndex: error return %v", err)
-	}
-	if scanIndex != 0 {
-		t.Errorf("ScanIndex: %d, should be 0", scanIndex)
-	}
-	_, err = f.ScanID(1)
-	if err != ErrInvalidScanIndex {
-		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
-	}
-	scanID, err := f.ScanID(0)
-	if err != nil {
-		t.Errorf("ScanID: error return %v", err)
-	}
-	if scanID != `file=sourceFile` {
-		t.Errorf("ScanID: %s, should be file=sourceFile", scanID)
+		_, err = f.ScanIndex(`file=sourceFile1`)
+		if err != ErrInvalidScanId {
+			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+		}
+		scanIndex, err := f.ScanIndex(`file=sourceFile`)
+		if err != nil {
+			t.Errorf("ScanIndex: error return %v", err)
+		}
+		if scanIndex != 0 {
+			t.Errorf("ScanIndex: %d, should be 0", scanIndex)
+		}
+		_, err = f.ScanID(1)
+		if err != ErrInvalidScanIndex {
+			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+		}
+		scanID, err := f.ScanID(0)
+		if err != nil {
+			t.Errorf("ScanID: error return %v", err)
+		}
+		if scanID != `file=sourceFile` {
+			t.Errorf("ScanID: %s, should be file=sourceFile", scanID)
+		}
 	}
 	n := f.NumSpecs()
 	if n != 1 {
@@ -84,7 +85,7 @@ func TestAll1(t *testing.T) {
 	if err != nil {
 		t.Errorf("MSInstruments: error return %v", err)
 	} else {
-		log.Printf("%+v\n", instruments)
+		log.Printf("reader_test Instrument CV term: %+v\n", instruments)
 	}
 
 }

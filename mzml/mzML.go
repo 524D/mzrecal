@@ -38,62 +38,104 @@ type Peak struct {
 // The mzML content that we read. Not all fields are parsed,
 // but we need to store them in order to write the result mzML.
 type mzMLContent struct {
-	XMLName         xml.Name `xml:"mzML"`
+	XMLName         xml.Name `xml:"http://psi.hupo.org/ms/mzml mzML"`
+	CvList          cvList   `xml:"cvList"`
+	FileDescription struct {
+		FileDescriptionXML string `xml:",innerxml"`
+	} `xml:"fileDescription"`
+	ReferenceableParamGroupList *referenceableParamGroupList `xml:"referenceableParamGroupList"`
+	SoftwareList                *softwareList                `xml:"softwareList"`
+	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList"`
+	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList"`
+	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
+}
+
+// We define a separte struct for writing XML because it is not possible
+// to write namespace info otherwise
+type mzMLContentWrite struct {
+	XMLName         xml.Name `xml:"http://psi.hupo.org/ms/mzml mzML"`
+	Sl1             string   `xml:"xsi:schemaLocation,attr"`
+	Version         string   `xml:"version,attr"`
+	Sl2             string   `xml:"xmlns:xsi,attr"`
 	CvList          cvList   `xml:"cvList"`
 	FileDescription struct {
 		FileDescriptionXML string `xml:",innerxml"`
 	} `xml:"fileDescription"`
 	ReferenceableParamGroupList *referenceableParamGroupList `xml:"referenceableParamGroupList,omitempty"`
-	SoftwareList                *softwareList                `xml:"softwareList,omitempty"`
-	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList,omitempty"`
-	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList,omitempty"`
-	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
+	SoftwareList                *softwareList                `xml:"softwareList"`
+	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList"`
+	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList"`
+	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum"`
 }
 
 type cvList struct {
-	Count     int    `xml:"count,attr"`
+	Count     int    `xml:"count,attr,omitempty"`
 	CvListXML []byte `xml:",innerxml"`
 }
 
 type referenceableParamGroupList struct {
-	Count                          int    `xml:"count,attr"`
+	Count                          int    `xml:"count,attr,omitempty"`
 	ReferenceableParamGroupListXML []byte `xml:",innerxml"`
 }
 
 type softwareList struct {
-	Count           int    `xml:"count,attr"`
+	Count           int    `xml:"count,attr,omitempty"`
 	SoftwareListXML []byte `xml:",innerxml"`
 }
 
 type instrumentConfigurationList struct {
-	Count                          int    `xml:"count,attr"`
+	Count                          int    `xml:"count,attr,omitempty"`
 	InstrumentConfigurationListXML []byte `xml:",innerxml"`
 }
 
 type dataProcessingList struct {
-	Count                 int    `xml:"count,attr"`
+	Count                 int    `xml:"count,attr,omitempty"`
 	DataProcessingListXML []byte `xml:",innerxml"`
 }
 
 type spectrum struct {
-	ID                 string            `xml:"id,attr"`
-	DefaultArrayLength int64             `xml:"defaultArrayLength,attr"`
-	Index              int               `xml:"index,attr"`
-	CvParam            []cvParam         `xml:"cvParam"`
-	ScanCvParam        []cvParam         `xml:"scanList>scan>cvParam"`
-	BinaryDataArray    []binaryDataArray `xml:"binaryDataArrayList>binaryDataArray"`
+	ID                  string              `xml:"id,attr"`
+	DefaultArrayLength  int64               `xml:"defaultArrayLength,attr"`
+	Index               int                 `xml:"index,attr"`
+	CvParam             []cvParam           `xml:"cvParam,omitempty"`
+	ScanList            scanList            `xml:"scanList"`
+	BinaryDataArrayList binaryDataArrayList `xml:"binaryDataArrayList"`
 }
 
-type cvParam struct {
-	Accession     string `xml:"accession,attr"`
-	Name          string `xml:"name,attr"`
-	Value         string `xml:"value,attr"`
-	UnitAccession string `xml:"unitAccession,attr"`
+type binaryDataArrayList struct {
+	Count           int               `xml:"count,attr,omitempty"`
+	BinaryDataArray []binaryDataArray `xml:"binaryDataArray"`
 }
 
 type binaryDataArray struct {
-	CvParam []cvParam `xml:"cvParam"`
-	Binary  string    `xml:"binary"`
+	EncodedLength int       `xml:"encodedLength,attr,omitempty"`
+	ArrayLength   int       `xml:"arrayLength,attr,omitempty"`
+	CvParam       []cvParam `xml:"cvParam,omitempty"`
+	Binary        string    `xml:"binary"`
+}
+
+type scanList struct {
+	Count   int       `xml:"count,attr,omitempty"`
+	CvParam []cvParam `xml:"cvParam,omitempty"`
+	Scan    []scan    `xml:"scan"`
+}
+
+type scan struct {
+	InstrConfRef   string         `xml:"instrumentConfigurationRef,attr,omitempty"`
+	CvParam        []cvParam      `xml:"cvParam,omitempty"`
+	ScanWindowList scanWindowList `xml:"scanWindowList"`
+}
+
+type scanWindowList struct {
+	Count          int    `xml:"count,attr,omitempty"`
+	ScanWindowList string `xml:",innerxml"`
+}
+
+type cvParam struct {
+	Accession     string `xml:"accession,attr,omitempty"`
+	Name          string `xml:"name,attr,omitempty"`
+	Value         string `xml:"value,attr,omitempty"`
+	UnitAccession string `xml:"unitAccession,attr,omitempty"`
 }
 
 var (
