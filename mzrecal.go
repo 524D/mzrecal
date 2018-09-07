@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -33,6 +35,7 @@ const (
 
 // Command line parameters
 type params struct {
+	recal             *bool // Compute recal parmeters (false) or recalibrate (true)
 	mzMLFilename      *string
 	mzIdentMlFilename *string
 	calFilename       *string  // Filename where JSON calibration parameters will be written
@@ -44,6 +47,7 @@ type params struct {
 	scoreFilter       *string  // PSM score filter to apply
 	minCharge         *int     // min m/z for calibrants
 	maxCharge         *int     // max m/z for calibrants
+	args              []string // Addtional values passed on the command line
 }
 
 type calibrant struct {
@@ -324,7 +328,7 @@ func getRecalMethod(mzML *mzml.MzML) (int, string, error) {
 	return calibNone, `NONE`, nil
 }
 
-func recalibrate(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
+func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
 	var recalMethod int
@@ -485,18 +489,132 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	return scoreFilt, nil
 }
 
+func usage() {
+	progName := filepath.Base(os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage of %s:\n", progName)
+	fmt.Fprintf(os.Stderr,
+		`
+This program can be used to recalibrate MS data in an mzML file
+using peptide identifications in an accompanying mzID file.
+
+Recalibration is divided in 2 steps:
+1) Computation of recalibration coefficients. The coefficients are stored
+   in a JSON file.
+   This step reads the mzML file and mzID file, matches measured peaks to
+   computed m/z values and computes recalibration coefficents using a method
+   that matched the instrument type. The instrument type (and other relavant
+   values) are determined from the CV terms in the input files.
+2) Creating a recalibrated version of the MS file.
+   This step reads the mzML file and JSON file with recalibration values,
+   computes recalibrated m/z values for all peaks in spectra for which
+   a valid recalibration was found, and writes a recalibrated mzML file.
+
+The default operation is computation of the recalibration values (the
+first step). Flag -recal switches to creation of the recalibrated mzML
+file (the second step).
+
+`)
+	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr,
+		`
+Usage examples:
+
+  %s BSA.mzXL
+     Read BSA.mzXL and BSA.mzid, write recalibration coefficents
+     to BSA.recal.json.
+
+  %s -mzid BSA_comet.mzid -cal BSA_comet.recal.json BSA.mzXL
+     Read BSA.mzXL and BSA_comet.mzid, write recalibration coefficents
+     to BSA_comet.recal.json
+
+  %s -recal BSA.mzXL
+     Read BSA.mzXL and BSA.recal.json, write recalibrated output to
+     BSA.recal.mzXL
+`, progName, progName, progName)
+}
+
+// sanatizeParams does some checks on parameters, and fills missing
+// filenames if possible
+func sanatizeParams(par *params) {
+	progName := filepath.Base(os.Args[0])
+
+	if len(par.args) != 1 {
+		fmt.Fprintf(os.Stderr, `Last argument must be name of mzML file.
+Type %s --help for usage
+	`, progName)
+		os.Exit(2)
+	}
+
+	mzml := par.args[0]
+	par.mzMLFilename = &mzml
+	var extension = filepath.Ext(mzml)
+	var startName = mzml[0 : len(mzml)-len(extension)]
+	if *par.mzIdentMlFilename == "" {
+		*par.calFilename = startName + ".mzid"
+	}
+	if *par.calFilename == "" {
+		*par.calFilename = startName + ".recal.json"
+	}
+}
+
+func doRecal(par params) {
+	_ = par
+}
+
+func makeRecalCoefficients(par params) {
+	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
+	if err != nil {
+		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
+	}
+
+	f1, err := os.Open(*par.mzIdentMlFilename)
+	if err != nil {
+		log.Fatalf("Open: mzIdentMLfile %v", err)
+	}
+	defer f1.Close()
+	mzIdentML, err := mzidentml.Read(f1)
+	if err != nil {
+		log.Fatalf("mzidentml.Read: error return %v", err)
+	}
+	cals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
+	if err != nil {
+		log.Fatal("makeCalibrantList failed")
+	}
+
+	f2, err := os.Open(*par.mzMLFilename)
+	if err != nil {
+		log.Fatalf("Open: mzMLfile %v", err)
+	}
+	defer f2.Close()
+	mzML, err := mzml.Read(f2)
+	if err != nil {
+		log.Fatalf("mzml.Read: error return %v", err)
+	}
+
+	recal, err := computeRecal(&mzML, cals, par)
+	if err != nil {
+		log.Fatalf("computeRecal: error return %v", err)
+	}
+
+	err = writeRecal(recal, par)
+	if err != nil {
+		log.Fatalf("writeRecal: error return %v", err)
+	}
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var par params
 
-	par.mzMLFilename = flag.String("mzml",
-		"test.mzml",
-		"mzML filename\n")
+	par.recal = flag.Bool("recal", false,
+		`Switch between computation of recalibration parameters (default) and actual
+	recalibration`)
+
 	par.mzIdentMlFilename = flag.String("mzid",
-		"test.mzid",
+		"",
 		"mzIdentMl filename\n")
 	par.calFilename = flag.String("cal",
-		"test.cal.json",
+		"",
 		"filename for output of computed calibration parameters\n")
 	par.minCal = flag.Int("mincals",
 		3,
@@ -532,45 +650,13 @@ MS:1002466 (PeptideShaker PSM score)
 		5,
 		"max charge of calibrants\n")
 
+	flag.Usage = usage
 	flag.Parse()
-	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
-
-	if err != nil {
-		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
-	}
-
-	f1, err := os.Open(*par.mzIdentMlFilename)
-	if err != nil {
-		log.Fatalf("Open: mzIdentMLfile %v", err)
-	}
-	defer f1.Close()
-	mzIdentML, err := mzidentml.Read(f1)
-	if err != nil {
-		log.Fatalf("mzidentml.Read: error return %v", err)
-	}
-	cals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
-	if err != nil {
-		log.Fatal("makeCalibrantList failed")
-	}
-
-	//	log.Printf("Calibrants (%d): %+v\n", len(cals), cals)
-	f2, err := os.Open(*par.mzMLFilename)
-	if err != nil {
-		log.Fatalf("Open: mzMLfile %v", err)
-	}
-	defer f2.Close()
-	mzML, err := mzml.Read(f2)
-	if err != nil {
-		log.Fatalf("mzml.Read: error return %v", err)
-	}
-
-	recal, err := recalibrate(&mzML, cals, par)
-	if err != nil {
-		log.Fatalf("recalibrate: error return %v", err)
-	}
-
-	err = writeRecal(recal, par)
-	if err != nil {
-		log.Fatalf("writeRecal: error return %v", err)
+	par.args = flag.Args()
+	sanatizeParams(&par)
+	if *par.recal {
+		doRecal(par)
+	} else {
+		makeRecalCoefficients(par)
 	}
 }
