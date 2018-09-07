@@ -37,6 +37,7 @@ const (
 type params struct {
 	recal             *bool // Compute recal parmeters (false) or recalibrate (true)
 	mzMLFilename      *string
+	mzMLRecalFilename *string
 	mzIdentMlFilename *string
 	calFilename       *string  // Filename where JSON calibration parameters will be written
 	minCal            *int     // minimum number of calibrants a spectrum should have to be recalibrated
@@ -385,8 +386,9 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 					i, err)
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
-			log.Printf("Spec %d retention match %d mz match %d calib used %d",
-				i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
+			_ = calibrantsUsed
+			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
+			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
 	return recal, nil
@@ -447,6 +449,32 @@ func writeRecal(recal recalParams, par params) error {
 	return nil
 }
 
+func readRecal(par params) (recalParams, error) {
+	var recal recalParams
+	f, err := os.Open(*par.calFilename)
+	if err != nil {
+		return recal, err
+	}
+	defer f.Close()
+
+	d := json.NewDecoder(f)
+	err = d.Decode(&recal)
+	return recal, err
+}
+
+func writeRecalMzML(mzML mzml.MzML, recal recalParams, par params) error {
+	_ = recal
+	_ = par
+	f, err := os.Create(*par.mzMLRecalFilename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	err = mzML.Write(f)
+	return err
+}
+
 func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	scoreFilt := make(scoreFilter)
 	var err error
@@ -500,10 +528,10 @@ using peptide identifications in an accompanying mzID file.
 Recalibration is divided in 2 steps:
 1) Computation of recalibration coefficients. The coefficients are stored
    in a JSON file.
-   This step reads the mzML file and mzID file, matches measured peaks to
+   This step reads an mzML file and mzID file, matches measured peaks to
    computed m/z values and computes recalibration coefficents using a method
-   that matched the instrument type. The instrument type (and other relavant
-   values) are determined from the CV terms in the input files.
+   that is usefull for the instrument type. The instrument type (and other
+   relavant values) are determined from the CV terms in the input files.
 2) Creating a recalibrated version of the MS file.
    This step reads the mzML file and JSON file with recalibration values,
    computes recalibrated m/z values for all peaks in spectra for which
@@ -549,16 +577,38 @@ Type %s --help for usage
 	par.mzMLFilename = &mzml
 	var extension = filepath.Ext(mzml)
 	var startName = mzml[0 : len(mzml)-len(extension)]
+
 	if *par.mzIdentMlFilename == "" {
-		*par.calFilename = startName + ".mzid"
+		*par.mzIdentMlFilename = startName + ".mzid"
 	}
 	if *par.calFilename == "" {
 		*par.calFilename = startName + ".recal.json"
 	}
+	if *par.mzMLRecalFilename == "" {
+		*par.mzMLRecalFilename = startName + ".recal.mzML"
+	}
 }
 
 func doRecal(par params) {
-	_ = par
+	f2, err := os.Open(*par.mzMLFilename)
+	if err != nil {
+		log.Fatalf("Open %s: mzMLfile %v", *par.mzMLFilename, err)
+	}
+	defer f2.Close()
+	mzML, err := mzml.Read(f2)
+	if err != nil {
+		log.Fatalf("mzml.Read: error return %v", err)
+	}
+
+	recal, err := readRecal(par)
+	if err != nil {
+		log.Fatalf("readRecal: error return %v", err)
+	}
+
+	err = writeRecalMzML(mzML, recal, par)
+	if err != nil {
+		log.Fatalf("writeRecalMzML: error return %v", err)
+	}
 }
 
 func makeRecalCoefficients(par params) {
@@ -569,7 +619,7 @@ func makeRecalCoefficients(par params) {
 
 	f1, err := os.Open(*par.mzIdentMlFilename)
 	if err != nil {
-		log.Fatalf("Open: mzIdentMLfile %v", err)
+		log.Fatalf("Open %s: mzIdentMLfile %v", *par.mzIdentMlFilename, err)
 	}
 	defer f1.Close()
 	mzIdentML, err := mzidentml.Read(f1)
@@ -610,6 +660,9 @@ func main() {
 		`Switch between computation of recalibration parameters (default) and actual
 	recalibration`)
 
+	par.mzMLRecalFilename = flag.String("mzRecal",
+		"",
+		"recalibrated mzML filename (only together with -recal)\n")
 	par.mzIdentMlFilename = flag.String("mzid",
 		"",
 		"mzIdentMl filename\n")
