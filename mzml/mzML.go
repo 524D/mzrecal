@@ -47,7 +47,8 @@ type mzMLContent struct {
 	SoftwareList                *softwareList                `xml:"softwareList"`
 	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList"`
 	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList"`
-	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
+	Run                         run                          `xml:"run"`
+	//	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
 }
 
 // We define a separte struct for writing XML because it is not possible
@@ -65,7 +66,7 @@ type mzMLContentWrite struct {
 	SoftwareList                *softwareList                `xml:"softwareList"`
 	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList"`
 	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList"`
-	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum"`
+	Run                         run                          `xml:"run"`
 }
 
 type cvList struct {
@@ -91,6 +92,27 @@ type instrumentConfigurationList struct {
 type dataProcessingList struct {
 	Count                 int    `xml:"count,attr,omitempty"`
 	DataProcessingListXML []byte `xml:",innerxml"`
+}
+
+type run struct {
+	Id                                string           `xml:"id,attr,omitempty"`
+	DefaultInstrumentConfigurationRef string           `xml:"defaultInstrumentConfigurationRef,attr,omitempty"`
+	StartTimeStamp                    string           `xml:"startTimeStamp,attr,omitempty"`
+	DefaultSourceFileRef              string           `xml:"defaultSourceFileRef,attr,omitempty"`
+	SpectrumList                      spectrumList     `xml:"spectrumList,omitempty"`
+	ChromatogramList                  chromatogramList `xml:"chromatogramList,omitempty"`
+}
+
+type spectrumList struct {
+	Count                    int        `xml:"count,attr,omitempty"`
+	DefaultDataProcessingRef string     `xml:"defaultDataProcessingRef,attr,omitempty"`
+	Spectrum                 []spectrum `xml:"spectrum,omitempty"`
+}
+
+type chromatogramList struct {
+	Count                    int    `xml:"count,attr,omitempty"`
+	DefaultDataProcessingRef string `xml:"defaultDataProcessingRef,attr,omitempty"`
+	ChromatogramListXML      []byte `xml:",innerxml"`
 }
 
 type spectrum struct {

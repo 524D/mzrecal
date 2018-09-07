@@ -165,15 +165,15 @@ func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
 
 // NumSpecs returns the number of spectra
 func (f *MzML) NumSpecs() int {
-	return len(f.content.Spectrum)
+	return len(f.content.Run.SpectrumList.Spectrum)
 }
 
 // RetentionTime returns the retention time of a spectrum
 func (f *MzML) RetentionTime(scanIndex int) (float64, error) {
-	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return 0.0, ErrInvalidScanIndex
 	}
-	for _, scan := range f.content.Spectrum[scanIndex].ScanList.Scan {
+	for _, scan := range f.content.Run.SpectrumList.Spectrum[scanIndex].ScanList.Scan {
 		for _, cvParam := range scan.CvParam {
 			if cvParam.Accession == "MS:1000016" {
 				retentionTime, err := strconv.ParseFloat(cvParam.Value, 64)
@@ -197,12 +197,12 @@ func (f *MzML) RetentionTime(scanIndex int) (float64, error) {
 // use ReadScan(f, ScanIndex(f, scanNum))
 func (f *MzML) ReadScan(scanIndex int) ([]Peak, error) {
 
-	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return nil, ErrInvalidScanIndex
 	}
-	p := make([]Peak, f.content.Spectrum[scanIndex].DefaultArrayLength)
+	p := make([]Peak, f.content.Run.SpectrumList.Spectrum[scanIndex].DefaultArrayLength)
 	var err error
-	for _, b := range f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
+	for _, b := range f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
 		p, err = fillScan(p, &b)
 		if err != nil {
 			return p, err
@@ -214,11 +214,11 @@ func (f *MzML) ReadScan(scanIndex int) ([]Peak, error) {
 
 // Centroid returns true is the spectrum contains centroid peaks
 func (f *MzML) Centroid(scanIndex int) (bool, error) {
-	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return false, ErrInvalidScanIndex
 	}
 
-	for _, cvParam := range f.content.Spectrum[scanIndex].CvParam {
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
 		if cvParam.Accession == "MS:1000127" { // centroid spectrum
 			return true, nil
 		}
@@ -228,11 +228,11 @@ func (f *MzML) Centroid(scanIndex int) (bool, error) {
 
 // MSLevel returns the MS level of a scan
 func (f *MzML) MSLevel(scanIndex int) (int, error) {
-	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return 0, ErrInvalidScanIndex
 	}
 
-	for _, cvParam := range f.content.Spectrum[scanIndex].CvParam {
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
 		if cvParam.Accession == "MS:1000511" { // ms level
 			msLevel, err := strconv.ParseInt(cvParam.Value, 10, 64)
 			return int(msLevel), err
@@ -281,11 +281,11 @@ func (f *MzML) traverseScan() error {
 	// name: MSn spectrum
 	// )
 
-	f.index2id = make([]string, len(f.content.Spectrum), len(f.content.Spectrum))
-	f.id2Index = make(map[string]int, len(f.content.Spectrum))
+	f.index2id = make([]string, f.NumSpecs(), f.NumSpecs())
+	f.id2Index = make(map[string]int, f.NumSpecs())
 	err := error(nil)
 
-	for i := range f.content.Spectrum {
+	for i := range f.content.Run.SpectrumList.Spectrum {
 		err = f.addSpecToIndex(i)
 		if err != nil {
 			return err
@@ -296,11 +296,11 @@ func (f *MzML) traverseScan() error {
 
 func (f *MzML) addSpecToIndex(i int) error {
 
-	if i != f.content.Spectrum[i].Index {
+	if i != f.content.Run.SpectrumList.Spectrum[i].Index {
 		return ErrInvalidScanIndex
 	}
-	f.index2id[i] = f.content.Spectrum[i].ID
-	f.id2Index[f.content.Spectrum[i].ID] = i
+	f.index2id[i] = f.content.Run.SpectrumList.Spectrum[i].ID
+	f.id2Index[f.content.Run.SpectrumList.Spectrum[i].ID] = i
 	return nil
 }
 
@@ -316,7 +316,7 @@ func (f *MzML) ScanIndex(scanID string) (int, error) {
 // ScanID converts a scan index (used to access the scan data) into a scan id
 // (used in the mzML file)
 func (f *MzML) ScanID(scanIndex int) (string, error) {
-	if scanIndex >= 0 && scanIndex < len(f.content.Spectrum) {
+	if scanIndex >= 0 && scanIndex < f.NumSpecs() {
 		return f.index2id[scanIndex], nil
 	}
 	return "", ErrInvalidScanIndex

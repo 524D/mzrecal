@@ -32,7 +32,7 @@ func (f *MzML) Write(writer io.Writer) error {
 	content.SoftwareList = f.content.SoftwareList
 	content.InstrumentConfigurationList = f.content.InstrumentConfigurationList
 	content.DataProcessingList = f.content.DataProcessingList
-	content.Spectrum = f.content.Spectrum
+	content.Run = f.content.Run
 
 	err := enc.Encode(&content)
 	return err
@@ -41,13 +41,13 @@ func (f *MzML) Write(writer io.Writer) error {
 // UpdateScan sets the mz/intensity info of a scan
 func (f *MzML) UpdateScan(scanIndex int, p []Peak,
 	updateMz bool, updateIntens bool) error {
-	if scanIndex < 0 || scanIndex >= len(f.content.Spectrum) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return ErrInvalidScanIndex
 	}
-	f.content.Spectrum[scanIndex].DefaultArrayLength = int64(len(p))
-	for i := range f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
+	f.content.Run.SpectrumList.Spectrum[scanIndex].DefaultArrayLength = int64(len(p))
+	for i := range f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
 		zlibCompression, bits64, mzArray, intensityArray, err :=
-			binaryDataPars(&f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i])
+			binaryDataPars(&f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i])
 		if err != nil {
 			return err
 		}
@@ -58,9 +58,9 @@ func (f *MzML) UpdateScan(scanIndex int, p []Peak,
 			if err != nil {
 				return err
 			}
-			f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].Binary = b64
-			f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].ArrayLength = len(p)
-			f.content.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].EncodedLength = len(b64)
+			f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].Binary = b64
+			f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].ArrayLength = len(p)
+			f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray[i].EncodedLength = len(b64)
 		}
 	}
 	return nil
