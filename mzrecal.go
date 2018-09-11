@@ -311,7 +311,7 @@ func newMzCalibrant(charge int, cal *calibrant) mzCalibrant {
 	return mzCal
 }
 
-func getRecalMethod(mzML *mzml.MzML) (int, string, error) {
+func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
 	instruments, err := mzML.MSInstruments()
 	if err != nil {
 		return 0, ``, err
@@ -329,13 +329,26 @@ func getRecalMethod(mzML *mzml.MzML) (int, string, error) {
 	return calibNone, `NONE`, nil
 }
 
+func recalMethodStr2Int(recalMethodStr string) int {
+	var recalMethod int
+	switch recalMethodStr {
+	case `FTICR`:
+		recalMethod = calibFTICR
+	case `TOF`:
+		recalMethod = calibTOF
+	case `Orbitrap`:
+		recalMethod = calibOrbitrap
+	}
+	return recalMethod
+}
+
 func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
 	var recalMethod int
 
 	recal.MzRecalVersion = "1.0"
-	recalMethod, recal.RecalMethod, err = getRecalMethod(mzML)
+	recalMethod, recal.RecalMethod, err = instrument2RecalMethod(mzML)
 	if err != nil {
 		return recal, err
 	}
@@ -423,10 +436,6 @@ func maxPeakInMzWindow(mzMin, mzMax float64, peaks []mzml.Peak) mzml.Peak {
 	// Find the indexes of the calibrants within the retention time window
 	i1 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz >= mzMin })
 	i2 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz > mzMax })
-
-	// if i1 < len(peaks) && i2 < len(peaks) {
-	// 	log.Printf("cnt %d peaks[i1].Mz %f, mzMin %f, peaks[i2].Mz %f, mzMax %f\n", i2-i1, peaks[i1].Mz, mzMin, peaks[i2].Mz, mzMax)
-	// }
 
 	var peak mzml.Peak // auto initialzed to 0.0, 0.0
 	for i := i1; i < i2; i++ {
@@ -590,12 +599,12 @@ Type %s --help for usage
 }
 
 func doRecal(par params) {
-	f2, err := os.Open(*par.mzMLFilename)
+	mzFile, err := os.Open(*par.mzMLFilename)
 	if err != nil {
 		log.Fatalf("Open %s: mzMLfile %v", *par.mzMLFilename, err)
 	}
-	defer f2.Close()
-	mzML, err := mzml.Read(f2)
+	defer mzFile.Close()
+	mzML, err := mzml.Read(mzFile)
 	if err != nil {
 		log.Fatalf("mzml.Read: error return %v", err)
 	}
@@ -603,6 +612,23 @@ func doRecal(par params) {
 	recal, err := readRecal(par)
 	if err != nil {
 		log.Fatalf("readRecal: error return %v", err)
+	}
+
+	recalMethod := recalMethodStr2Int(recal.RecalMethod)
+
+	for _, specRecalPar := range recal.SpecRecalPar {
+		specNr := specRecalPar.SpecNr
+		recalPars := setRecalPars(recalMethod, specRecalPar)
+
+		peaks, err1 := mzML.ReadScan(specNr)
+		if err1 != nil {
+			log.Fatalf("readRecal: mzML.ReadScan %v", err1)
+		}
+		for i, peak := range peaks {
+			mzNew := mzRecal(peak.Mz, &recalPars)
+			peaks[i].Mz = mzNew
+		}
+		mzML.UpdateScan(specNr, peaks, true, false)
 	}
 
 	err = writeRecalMzML(mzML, recal, par)

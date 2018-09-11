@@ -332,3 +332,18 @@ func recalibrateSpec(specNr int, recalMethod int,
 	calibrantsUsed := int(specCalResult.n_calibrants)
 	return specRecalPar, calibrantsUsed, nil
 }
+
+func setRecalPars(recalMethod int, specRecalPar specRecalParams) C.cal_params_t {
+	var cCalPar C.cal_params_t
+	cCalPar.calib_method = C.calib_method_t(recalMethod)
+	cCalPar.nr_cal_pars = C.int(len(specRecalPar.P))
+	for i, p := range specRecalPar.P {
+		cCalPar.cal_pars[i] = C.double(p)
+	}
+	return cCalPar
+}
+
+func mzRecal(mz float64, recalPar *C.cal_params_t) float64 {
+	mzNew := float64(C.mz_recalX(C.double(mz), recalPar))
+	return mzNew
+}
