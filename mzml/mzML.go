@@ -80,8 +80,14 @@ type referenceableParamGroupList struct {
 }
 
 type softwareList struct {
-	Count           int    `xml:"count,attr,omitempty"`
-	SoftwareListXML []byte `xml:",innerxml"`
+	Count    int        `xml:"count,attr,omitempty"`
+	Software []software `xml:"software"`
+}
+
+type software struct {
+	ID      string    `xml:"id,attr,omitempty"`
+	Version string    `xml:"version,attr,omitempty"`
+	CvParam []cvParam `xml:"cvParam,omitempty"`
 }
 
 type instrumentConfigurationList struct {

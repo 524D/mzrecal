@@ -38,6 +38,16 @@ func (f *MzML) Write(writer io.Writer) error {
 	return err
 }
 
+func (f *MzML) AppendSoftwareInfo(id string, version string) error {
+	var sw software
+
+	sw.ID = id
+	sw.Version = version
+	f.content.SoftwareList.Count++
+	f.content.SoftwareList.Software = append(f.content.SoftwareList.Software, sw)
+	return nil
+}
+
 // UpdateScan sets the mz/intensity info of a scan
 func (f *MzML) UpdateScan(scanIndex int, p []Peak,
 	updateMz bool, updateIntens bool) error {

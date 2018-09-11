@@ -21,6 +21,9 @@ import (
 	"mzrecal/mzml"
 )
 
+const progName = "mzRecal"
+const progVersion = "0.1"
+
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
@@ -630,6 +633,8 @@ func doRecal(par params) {
 		}
 		mzML.UpdateScan(specNr, peaks, true, false)
 	}
+
+	mzML.AppendSoftwareInfo(progName, progVersion)
 
 	err = writeRecalMzML(mzML, recal, par)
 	if err != nil {
