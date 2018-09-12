@@ -48,7 +48,6 @@ type mzMLContent struct {
 	InstrumentConfigurationList *instrumentConfigurationList `xml:"instrumentConfigurationList"`
 	DataProcessingList          *dataProcessingList          `xml:"dataProcessingList"`
 	Run                         run                          `xml:"run"`
-	//	Spectrum                    []spectrum                   `xml:"run>spectrumList>spectrum,omitempty"`
 }
 
 // We define a separte struct for writing XML because it is not possible
@@ -122,11 +121,16 @@ type chromatogramList struct {
 }
 
 type spectrum struct {
-	ID                  string              `xml:"id,attr"`
-	DefaultArrayLength  int64               `xml:"defaultArrayLength,attr"`
-	Index               int                 `xml:"index,attr"`
-	CvParam             []cvParam           `xml:"cvParam,omitempty"`
-	ScanList            scanList            `xml:"scanList"`
+	Index              int       `xml:"index,attr"`
+	ID                 string    `xml:"id,attr"`
+	DefaultArrayLength int64     `xml:"defaultArrayLength,attr"`
+	CvParam            []cvParam `xml:"cvParam,omitempty"`
+	ScanList           scanList  `xml:"scanList"`
+	// precursorList is a slice, only the current version of
+	// the encoding/xml package does not handle "omitempty" properly on
+	// structures, and we don't want precursorList tags to appear in
+	// e.g. ms1 spectra
+	PrecursorList       []precursorList     `xml:"precursorList,omitempty"`
 	BinaryDataArrayList binaryDataArrayList `xml:"binaryDataArrayList"`
 }
 
@@ -151,7 +155,44 @@ type scanList struct {
 type scan struct {
 	InstrConfRef   string         `xml:"instrumentConfigurationRef,attr,omitempty"`
 	CvParam        []cvParam      `xml:"cvParam,omitempty"`
+	UserParam      []userParam    `xml:"userParam,omitempty"`
 	ScanWindowList scanWindowList `xml:"scanWindowList"`
+}
+
+type userParam struct {
+	Name  string `xml:"name,attr,omitempty"`
+	Value string `xml:"value,attr,omitempty"`
+	Type  string `xml:"type,attr,omitempty"`
+}
+
+type precursorList struct {
+	Count     int         `xml:"count,attr,omitempty"`
+	Precursor []precursor `xml:"precursor"`
+}
+
+type precursor struct {
+	SpectrumRef     string          `xml:"spectrumRef,attr,omitempty"`
+	IsolationWindow isolationWindow `xml:"isolationWindow,omitempty"`
+	SelectedIonList selectedIonList `xml:"selectedIonList"`
+	Activation      activation      `xml:"activation"`
+}
+
+type isolationWindow struct {
+	CvParam []cvParam `xml:"cvParam,omitempty"`
+}
+
+type selectedIonList struct {
+	Count       int           `xml:"count,attr,omitempty"`
+	CvParam     []cvParam     `xml:"cvParam,omitempty"`
+	SelectedIon []selectedIon `xml:"selectedIon"`
+}
+
+type selectedIon struct {
+	CvParam []cvParam `xml:"cvParam,omitempty"`
+}
+
+type activation struct {
+	CvParam []cvParam `xml:"cvParam,omitempty"`
 }
 
 type scanWindowList struct {
@@ -163,7 +204,9 @@ type cvParam struct {
 	Accession     string `xml:"accession,attr,omitempty"`
 	Name          string `xml:"name,attr,omitempty"`
 	Value         string `xml:"value,attr,omitempty"`
+	UnitCvRef     string `xml:"unitCvRef,attr,omitempty"`
 	UnitAccession string `xml:"unitAccession,attr,omitempty"`
+	UnitName      string `xml:"unitName,attr,omitempty"`
 }
 
 var (
