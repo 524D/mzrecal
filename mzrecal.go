@@ -21,9 +21,11 @@ import (
 	"mzrecal/mzml"
 )
 
+// Program name and version, appended to software list in mzML output
 const progName = "mzRecal"
 const progVersion = "0.1"
 
+// Peptides m/z values within mergeMassTol are merged
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
@@ -188,7 +190,7 @@ func (a peaksByMass) Len() int           { return len(a) }
 func (a peaksByMass) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a peaksByMass) Less(i, j int) bool { return a[i].Mz < a[j].Mz }
 
-// Compute the smallest isotopic mass of a peptide
+// Compute the lowest isotope mass of the peptide
 func pepMass(pepSeq string) (float64, error) {
 	m := float64(18.0105647) // H2O
 	for _, aa := range pepSeq {
@@ -601,6 +603,13 @@ Type %s --help for usage
 	}
 }
 
+// doRecal glues together all the steps to produce a
+// re-calibrated mzML file:
+// Read mzML file
+// Read racalibration parameters from JSON file
+// Recalibrate each spectrum
+// Add our program name and version to the mlML software list
+// Write recalibrated mlML file
 func doRecal(par params) {
 	mzFile, err := os.Open(*par.mzMLFilename)
 	if err != nil {
@@ -620,18 +629,20 @@ func doRecal(par params) {
 	recalMethod := recalMethodStr2Int(recal.RecalMethod)
 
 	for _, specRecalPar := range recal.SpecRecalPar {
-		specNr := specRecalPar.SpecNr
-		recalPars := setRecalPars(recalMethod, specRecalPar)
-
-		peaks, err1 := mzML.ReadScan(specNr)
-		if err1 != nil {
-			log.Fatalf("readRecal: mzML.ReadScan %v", err1)
+		// Skip spectra for which no recalibration coefficients are available
+		if specRecalPar.P != nil {
+			specNr := specRecalPar.SpecNr
+			recalPars := setRecalPars(recalMethod, specRecalPar)
+			peaks, err1 := mzML.ReadScan(specNr)
+			if err1 != nil {
+				log.Fatalf("readRecal: mzML.ReadScan %v", err1)
+			}
+			for i, peak := range peaks {
+				mzNew := mzRecal(peak.Mz, &recalPars)
+				peaks[i].Mz = mzNew
+			}
+			mzML.UpdateScan(specNr, peaks, true, false)
 		}
-		for i, peak := range peaks {
-			mzNew := mzRecal(peak.Mz, &recalPars)
-			peaks[i].Mz = mzNew
-		}
-		mzML.UpdateScan(specNr, peaks, true, false)
 	}
 
 	mzML.AppendSoftwareInfo(progName, progVersion)
