@@ -561,17 +561,17 @@ file (the second step).
 		`
 Usage examples:
 
-  %s BSA.mzXL
-     Read BSA.mzXL and BSA.mzid, write recalibration coefficents
+  %s BSA.mzML
+     Read BSA.mzML and BSA.mzid, write recalibration coefficents
      to BSA.recal.json.
 
-  %s -mzid BSA_comet.mzid -cal BSA_comet.recal.json BSA.mzXL
-     Read BSA.mzXL and BSA_comet.mzid, write recalibration coefficents
+  %s -mzid BSA_comet.mzid -cal BSA_comet.recal.json BSA.mzML
+     Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
      to BSA_comet.recal.json
 
-  %s -recal BSA.mzXL
-     Read BSA.mzXL and BSA.recal.json, write recalibrated output to
-     BSA.recal.mzXL
+  %s -recal BSA.mzML
+     Read BSA.mzML and BSA.recal.json, write recalibrated output to
+     BSA.recal.mzML
 `, progName, progName, progName)
 }
 
@@ -583,7 +583,7 @@ func sanatizeParams(par *params) {
 	if len(par.args) != 1 {
 		fmt.Fprintf(os.Stderr, `Last argument must be name of mzML file.
 Type %s --help for usage
-	`, progName)
+`, progName)
 		os.Exit(2)
 	}
 
