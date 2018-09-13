@@ -17,12 +17,12 @@ import (
 	"unsafe"
 )
 
-func recalibrateSpec(specNr int, recalMethod int,
+func recalibrateSpec(specIndex int, recalMethod int,
 	mzCalibrants []mzCalibrant, par params) (
 	specRecalParams, int, error) {
 	var specRecalPar specRecalParams
 
-	specRecalPar.SpecNr = specNr
+	specRecalPar.SpecIndex = specIndex
 
 	// FIXME: Handle out of memory for C.malloc (not sure if it returns nil or panics...)
 	calibrantList := (*C.calibrant_t)(C.malloc(C.ulong(C.sizeof_calibrant_t * len(mzCalibrants))))
@@ -34,7 +34,7 @@ func recalibrateSpec(specNr int, recalMethod int,
 	recalData.n_calibrants = C.int(len(mzCalibrants))
 	recalData.calibrants = calibrantList
 	specCalResult, _ := C.recalibratePeaks(recalData,
-		C.int(*par.minCal), C.int(specNr))
+		C.int(*par.minCal), C.int(specIndex))
 	C.free(unsafe.Pointer(calibrantList))
 	for i := 0; i < int(specCalResult.nr_cal_pars); i++ {
 		specRecalPar.P = append(specRecalPar.P, float64(specCalResult.cal_pars[i]))

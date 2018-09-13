@@ -78,8 +78,8 @@ type recalParams struct {
 // computation must be done with these parameters to obtain the
 // final calibration
 type specRecalParams struct {
-	SpecNr int
-	P      []float64
+	SpecIndex int
+	P         []float64
 }
 
 type mzCalibrant struct {
@@ -631,9 +631,9 @@ func doRecal(par params) {
 	for _, specRecalPar := range recal.SpecRecalPar {
 		// Skip spectra for which no recalibration coefficients are available
 		if specRecalPar.P != nil {
-			specNr := specRecalPar.SpecNr
+			specIndex := specRecalPar.SpecIndex
 			recalPars := setRecalPars(recalMethod, specRecalPar)
-			peaks, err1 := mzML.ReadScan(specNr)
+			peaks, err1 := mzML.ReadScan(specIndex)
 			if err1 != nil {
 				log.Fatalf("readRecal: mzML.ReadScan %v", err1)
 			}
@@ -641,7 +641,7 @@ func doRecal(par params) {
 				mzNew := mzRecal(peak.Mz, &recalPars)
 				peaks[i].Mz = mzNew
 			}
-			mzML.UpdateScan(specNr, peaks, true, false)
+			mzML.UpdateScan(specIndex, peaks, true, false)
 		}
 	}
 
