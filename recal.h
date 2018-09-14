@@ -34,7 +34,9 @@ typedef struct {
 
 double mz_recalX(double mz_meas, cal_params_t *p);
 cal_params_t recalibratePeaks(recal_data_t d,
-                                   int min_cal, int spec_nr);
+                              int min_cal,
+                              double internal_calibration_target,
+                              int spec_nr);
 void fill_calibrant_list(calibrant_t *calibrant_list, int i,
                          double mz_calc, double mz_measured);
 

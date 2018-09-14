@@ -7,9 +7,6 @@
 #include <gsl/gsl_multifit_nlin.h>
 #include "recal.h"
 
-// FIXME: Change this constant to a parameter
-#define INTERNAL_CALIBRATION_TARGET 3e-6	//discard internal calibrants that do not fit CAL2 better than this
-
 // Maximum number of iterations fro the FDF solver
 #define MAX_FDF_SOLVER_ITER 500
 
@@ -179,7 +176,9 @@ void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
 }
 
 cal_params_t recalibratePeaks(recal_data_t d,
-                                   int min_cal, int spec_nr){
+                              int min_cal,
+                              double internal_calibration_target,
+                              int spec_nr){
     int status, satisfied, j, vi;
 
     const gsl_multifit_fdfsolver_type *T;
@@ -228,20 +227,20 @@ cal_params_t recalibratePeaks(recal_data_t d,
         chi = gsl_blas_dnrm2(s->f);
         gsl_multifit_fdfsolver_free(s);
 
-        // OK, that was one internal recalibration, now lets check if all calibrants are < INTERNAL_CALIBRATION_TARGET, if not, throw these out
+        // OK, that was one internal recalibration, now lets check if all calibrants are < internal_calibration_target, if not, throw these out
         // and recalibrate (as long as we have at least min_cal peaks)
         int accepted_idx = 0;
         for(j=0; j<d.n_calibrants; j++) {
             double mz_calc = d.calibrants[j].mz_calc;
             double mz_meas = d.calibrants[j].mz_meas;
             double mz_recal = mz_recalX(mz_meas, &cal_params);
-            if (fabs((mz_calc-mz_recal)/mz_calc)<INTERNAL_CALIBRATION_TARGET) {
+            if (fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target) {
                 d.calibrants[accepted_idx++] = d.calibrants[j];
             }
         }
         // If all (remaining) calibrants are accepted, we are done
         if (accepted_idx == d.n_calibrants) {
-            satisfied=1; // all calibrants < INTERNAL_CALIBRATION_TARGET
+            satisfied=1; // all calibrants < internal_calibration_target
         }
         d.n_calibrants=accepted_idx;
     }
