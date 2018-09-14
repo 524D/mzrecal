@@ -2,8 +2,7 @@
 * Output log file with e.g. which identifications where not matched to
   a peak in MS1, how many identifications did not match score filter,
   performance timing for each step.
-* Remove peptides which don't match score filter
 * Compute the recalibration
-*   Implement the recalibration functions for different instruments
+*   Implement the recalibration functions for TOF
 
-* From recalibration parameters, create re-calibrated mzml file
+* MergeSameMzCalibrants instead of MergeSameMassCalibrants?
