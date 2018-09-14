@@ -25,6 +25,10 @@ import (
 const progName = "mzRecal"
 const progVersion = "0.1"
 
+// Format of output, if it ever changes we should still be able to parse
+// output from old versions
+const outputFormatVersion = "1.0"
+
 // Peptides m/z values within mergeMassTol are merged
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
@@ -352,13 +356,15 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 	var err error
 	var recalMethod int
 
-	recal.MzRecalVersion = "1.0"
+	recal.MzRecalVersion = outputFormatVersion
 	recalMethod, recal.RecalMethod, err = instrument2RecalMethod(mzML)
 	if err != nil {
 		return recal, err
 	}
 
-	for i := 0; i < mzML.NumSpecs(); i++ {
+	numSpecs := mzML.NumSpecs()
+
+	for i := 0; i < numSpecs; i++ {
 		msLevel, err := mzML.MSLevel(i)
 		if err != nil {
 			return recal, err
@@ -397,6 +403,7 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
 
+			debugLogSpecs(i, numSpecs, retentionTime, peaks, mzMatchingCals, par)
 			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
 				mzMatchingCals, par)
 			if err != nil {
@@ -405,8 +412,8 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 			_ = calibrantsUsed
-			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
-			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
+			log.Printf("Spec %d retention match %d mz match %d calib used %d",
+				i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
 	return recal, nil
@@ -701,7 +708,6 @@ func main() {
 	par.recal = flag.Bool("recal", false,
 		`Switch between computation of recalibration parameters (default) and actual
 	recalibration`)
-
 	par.mzMLRecalFilename = flag.String("mzRecal",
 		"",
 		"recalibrated mzML filename (only together with -recal)\n")
@@ -725,7 +731,7 @@ func main() {
 		"upper rt window boundary (s)\n")
 	par.mzErrPPM = flag.Float64("massErr",
 		10.0,
-		"max mz error for assigning a peak to a calibrant\n")
+		"max mz error (ppm) for assigning a peak to a calibrant\n")
 	par.scoreFilter = flag.String("scoreFilter",
 		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
 		`filter for PSM scores to accept. Format:
