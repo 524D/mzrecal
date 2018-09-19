@@ -11,6 +11,11 @@ type MzML struct {
 	id2Index map[string]int
 }
 
+// type Precursor struct {
+// 	spectrumRef string
+// 	selectedIon []Peak
+// }
+
 // CV Terms for binary data compression
 // MS:1000574 zlib compression
 // MS:1000576 No Compression
@@ -166,11 +171,11 @@ type userParam struct {
 }
 
 type precursorList struct {
-	Count     int         `xml:"count,attr,omitempty"`
-	Precursor []precursor `xml:"precursor"`
+	Count     int            `xml:"count,attr,omitempty"`
+	Precursor []XMLprecursor `xml:"precursor"`
 }
 
-type precursor struct {
+type XMLprecursor struct {
 	SpectrumRef     string          `xml:"spectrumRef,attr,omitempty"`
 	IsolationWindow isolationWindow `xml:"isolationWindow,omitempty"`
 	SelectedIonList selectedIonList `xml:"selectedIonList"`

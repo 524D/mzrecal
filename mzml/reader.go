@@ -304,7 +304,7 @@ func (f *MzML) addSpecToIndex(i int) error {
 	return nil
 }
 
-// ScanIndex converts a scan identifier (the number used in the mzML file)
+// ScanIndex converts a scan identifier (the string used in the mzML file)
 // into an index that is used to access the scans
 func (f *MzML) ScanIndex(scanID string) (int, error) {
 	if index, ok := f.id2Index[scanID]; ok {
@@ -320,4 +320,16 @@ func (f *MzML) ScanID(scanIndex int) (string, error) {
 		return f.index2id[scanIndex], nil
 	}
 	return "", ErrInvalidScanIndex
+}
+
+// GetPrecursors returns the mzML precursus struct for a given scanIndex
+func (f *MzML) GetPrecursors(scanIndex int) ([]XMLprecursor, error) {
+	if scanIndex >= 0 && scanIndex < f.NumSpecs() {
+		var p []XMLprecursor
+		if f.content.Run.SpectrumList.Spectrum[scanIndex].PrecursorList != nil {
+			p = f.content.Run.SpectrumList.Spectrum[scanIndex].PrecursorList[0].Precursor
+		}
+		return p, nil
+	}
+	return nil, ErrInvalidScanIndex
 }

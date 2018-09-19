@@ -33,6 +33,12 @@ const outputFormatVersion = "1.0"
 const mergeMassTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
+// CV parameters names
+const cvParamSelectedIonMz = `MS:1000744`
+const cvFTICRSpectrometer = `MS:1000079`
+const cvTOFSpectrometer = `MS:1000084`
+const cvOrbiTrapSpectrometer = `MS:1000484`
+
 // The calibration types that we can handle
 // WARNING: This must be consistent with C enum calib_method_t in gsl_wrapper.go
 const (
@@ -327,11 +333,11 @@ func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
 	}
 	for _, instr := range instruments {
 		switch instr {
-		case `MS:1000079`:
+		case cvFTICRSpectrometer:
 			return calibFTICR, `FTICR`, nil
-		case `MS:1000084`:
+		case cvTOFSpectrometer:
 			return calibTOF, `TOF`, nil
-		case `MS:1000484`:
+		case cvOrbiTrapSpectrometer:
 			return calibOrbitrap, `Orbitrap`, nil
 		}
 	}
@@ -440,7 +446,7 @@ func mzCalibrantsMatchPeaks(peaks []mzml.Peak, mzCalibrants []mzCalibrant, par p
 	return mzMatchingCals
 }
 
-// maxPeakInMzWindow returns the highest initensity peak in a given mz window.
+// maxPeakInMzWindow returns the highest intensity peak in a given mz window.
 // Peaks must be ordered by mz prior to calling this function
 // If no peak was found, peak.intensity will be 0
 func maxPeakInMzWindow(mzMin, mzMax float64, peaks []mzml.Peak) mzml.Peak {
@@ -610,6 +616,63 @@ Type %s --help for usage
 	}
 }
 
+func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
+	recalMethod := recalMethodStr2Int(recal.RecalMethod)
+
+	// Make map to lookup recal parameters for a given spectrum index
+	specIndex2recalIndex := make(map[int]int)
+	for i, specRecalPar := range recal.SpecRecalPar {
+		specIndex2recalIndex[specRecalPar.SpecIndex] = i
+	}
+	numSpecs := mzML.NumSpecs()
+	for i := 0; i < numSpecs; i++ {
+		// Only update precursors for MS2
+		MSLevel, err := mzML.MSLevel(i)
+		if err != nil {
+			return err
+		}
+		if MSLevel == 2 {
+			precursors, err := mzML.GetPrecursors(i)
+			if err != nil {
+				return err
+			}
+			for _, precursor := range precursors {
+				spectrumRef := precursor.SpectrumRef
+				scanIndex, err := mzML.ScanIndex(spectrumRef)
+				if err != nil {
+					log.Printf("Invalid spectrumRef %s (spec %d)",
+						spectrumRef, i)
+				}
+				recalIndex, ok := specIndex2recalIndex[scanIndex]
+				if !ok {
+					log.Printf("Recalibration parameters missing for scanIndex %d)",
+						scanIndex)
+				}
+				if ok && recal.SpecRecalPar[recalIndex].P != nil {
+					specRecalPar := recal.SpecRecalPar[recalIndex]
+					recalPars := setRecalPars(recalMethod, specRecalPar)
+					for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
+						for k, cvParam := range selectedIon.CvParam {
+							if cvParam.Accession == cvParamSelectedIonMz {
+								Mz, _ := strconv.ParseFloat(cvParam.Value, 64)
+								if err != nil {
+									log.Printf("Invalid mz value %s (spec %d)",
+										cvParam.Value, i)
+								} else {
+									mzNew := mzRecal(Mz, &recalPars)
+									selectedIon.CvParam[k].Value =
+										strconv.FormatFloat(mzNew, 'f', 8, 64)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // doRecal glues together all the steps to produce a
 // re-calibrated mzML file:
 // Read mzML file
@@ -653,6 +716,11 @@ func doRecal(par params) {
 	}
 
 	mzML.AppendSoftwareInfo(progName, progVersion)
+
+	err = updatePrecursorMz(mzML, recal)
+	if err != nil {
+		log.Fatalf("updatePrecursorMz: %v", err)
+	}
 
 	err = writeRecalMzML(mzML, recal, par)
 	if err != nil {
