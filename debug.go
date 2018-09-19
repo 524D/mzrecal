@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -16,6 +17,8 @@ import (
 var debugSpecs *string // Print debug output for given spectrum range
 
 // Parse string like "-12:6" into 2 values, -12 and 6
+// Parameters min and max are the "default" min/max values,
+// when a value is not specified (e.g. "-12:"), the defauls is assigned
 func parseIntRange(r string, min int, max int) (int, int, error) {
 	re := regexp.MustCompile(`\s*(\-?\d*):(\-?\d*)`)
 	m := re.FindStringSubmatch(r)
@@ -33,8 +36,12 @@ func parseIntRange(r string, min int, max int) (int, int, error) {
 			maxOut = max
 		}
 	}
-	// FIXME: do some error checking (max*>min*)
-	return minOut, maxOut, nil
+	var err error
+	if minOut > maxOut {
+		err = errors.New("parseIntRange min>max")
+		minOut = maxOut
+	}
+	return minOut, maxOut, err
 }
 
 func init() {
