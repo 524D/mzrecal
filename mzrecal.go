@@ -59,7 +59,8 @@ type params struct {
 	minPeak           *float64 // minimum intensity of peaks to be considered for recalibrating
 	lowRT             *float64 // lower rt window boundary
 	upRT              *float64 // upper rt window boundary
-	mzErrPPM          *float64 // max mass measurement error
+	mzErrPPM          *float64 // max mz error for trying a calibrant in calibrant
+	mzTargetPPM       *float64 // max mz error for accepting a calibrant in calibration
 	scoreFilter       *string  // PSM score filter to apply
 	minCharge         *int     // min m/z for calibrants
 	maxCharge         *int     // max m/z for calibrants
@@ -418,8 +419,8 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 			_ = calibrantsUsed
-			log.Printf("Spec %d retention match %d mz match %d calib used %d",
-				i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
+			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
+			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
 	return recal, nil
@@ -797,9 +798,12 @@ func main() {
 	par.upRT = flag.Float64("upRT",
 		10,
 		"upper rt window boundary (s)\n")
-	par.mzErrPPM = flag.Float64("massErr",
+	par.mzErrPPM = flag.Float64("mzTry",
 		10.0,
-		"max mz error (ppm) for assigning a peak to a calibrant\n")
+		"max mz error (ppm) for trying to use calibrant for calibration\n")
+	par.mzTargetPPM = flag.Float64("mzAccept",
+		2.0,
+		"max mz error (ppm) for accepting a calibrant for calibration\n")
 	par.scoreFilter = flag.String("scoreFilter",
 		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
 		`filter for PSM scores to accept. Format:

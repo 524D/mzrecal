@@ -33,8 +33,8 @@ func recalibrateSpec(specIndex int, recalMethod int,
 	recalData.calib_method = C.calib_method_t(recalMethod)
 	recalData.n_calibrants = C.int(len(mzCalibrants))
 	recalData.calibrants = calibrantList
-	// Aim to calibrate to half the original PPM
-	internalCalibrationTarget := *par.mzErrPPM / 2000000.0
+	// Aim to calibrate to half the specified mass error
+	internalCalibrationTarget := *par.mzTargetPPM / 1000000.0
 	specCalResult, _ := C.recalibratePeaks(recalData, C.int(*par.minCal),
 		C.double(internalCalibrationTarget), C.int(specIndex))
 	C.free(unsafe.Pointer(calibrantList))
