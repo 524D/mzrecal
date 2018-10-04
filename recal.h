@@ -24,6 +24,7 @@ typedef struct {
 typedef struct {
     double mz_calc; // calculated m/z
     double mz_meas; // measured m/z
+    int    id;      // calibrant identification (only used for testing/debugging)
 } calibrant_t;
 
 typedef struct {
@@ -33,11 +34,12 @@ typedef struct {
 } recal_data_t;
 
 double mz_recalX(double mz_meas, cal_params_t *p);
-cal_params_t recalibratePeaks(recal_data_t d,
+cal_params_t recalibratePeaks(recal_data_t *d,
                               int min_cal,
                               double internal_calibration_target,
                               int spec_nr);
 void fill_calibrant_list(calibrant_t *calibrant_list, int i,
                          double mz_calc, double mz_measured);
+int get_calibrant_id(calibrant_t *calibrant_list, int i);
 
 #endif

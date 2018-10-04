@@ -175,7 +175,7 @@ void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
     }
 }
 
-cal_params_t recalibratePeaks(recal_data_t d,
+cal_params_t recalibratePeaks(recal_data_t *d,
                               int min_cal,
                               double internal_calibration_target,
                               int spec_nr){
@@ -187,7 +187,7 @@ cal_params_t recalibratePeaks(recal_data_t d,
     int iter=0;
     cal_params_t cal_params;
 
-    init_cal_params(&cal_params, d.calib_method);
+    init_cal_params(&cal_params, d->calib_method);
 
     gsl_multifit_function_fdf func;
 
@@ -201,14 +201,14 @@ cal_params_t recalibratePeaks(recal_data_t d,
     func.fdf = &calib_fdf;
 
     satisfied=0;
-    while (d.n_calibrants >= min_cal && !satisfied) {
+    while (d->n_calibrants >= min_cal && !satisfied) {
         // least-squares fit first using all peaks, than removing those that don't fit
         iter=0;
         T = gsl_multifit_fdfsolver_lmder;
-        s = gsl_multifit_fdfsolver_alloc (T, d.n_calibrants, cal_params.nr_cal_pars);
-        func.n = d.n_calibrants;
+        s = gsl_multifit_fdfsolver_alloc (T, d->n_calibrants, cal_params.nr_cal_pars);
+        func.n = d->n_calibrants;
         func.p = cal_params.nr_cal_pars;
-        func.params = &d;
+        func.params = d;
         gsl_multifit_fdfsolver_set(s,&func,&x.vector);
 
         do {
@@ -230,21 +230,21 @@ cal_params_t recalibratePeaks(recal_data_t d,
         // OK, that was one internal recalibration, now lets check if all calibrants are < internal_calibration_target, if not, throw these out
         // and recalibrate (as long as we have at least min_cal peaks)
         int accepted_idx = 0;
-        for(j=0; j<d.n_calibrants; j++) {
-            double mz_calc = d.calibrants[j].mz_calc;
-            double mz_meas = d.calibrants[j].mz_meas;
+        for(j=0; j<d->n_calibrants; j++) {
+            double mz_calc = d->calibrants[j].mz_calc;
+            double mz_meas = d->calibrants[j].mz_meas;
             double mz_recal = mz_recalX(mz_meas, &cal_params);
             if (fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target) {
-                d.calibrants[accepted_idx++] = d.calibrants[j];
+                d->calibrants[accepted_idx++] = d->calibrants[j];
             }
         }
         // If all (remaining) calibrants are accepted, we are done
-        if (accepted_idx == d.n_calibrants) {
+        if (accepted_idx == d->n_calibrants) {
             satisfied=1; // all calibrants < internal_calibration_target
         }
-        d.n_calibrants=accepted_idx;
+        d->n_calibrants=accepted_idx;
     }
-    cal_params.n_calibrants = d.n_calibrants;
+    cal_params.n_calibrants = d->n_calibrants;
     if (!satisfied) {
         cal_params.nr_cal_pars = -1;
         cal_params.n_calibrants = 0;
@@ -258,4 +258,11 @@ void fill_calibrant_list(calibrant_t *calibrant_list, int i,
                          double mz_calc, double mz_measured) {
     calibrant_list[i].mz_calc = mz_calc;
     calibrant_list[i].mz_meas = mz_measured;
+    calibrant_list[i].id = i;
+}
+
+// Function get_calibrant_id is only needed because directly accessing
+// a C "pointer array" from Go is a bit messy.
+int get_calibrant_id(calibrant_t *calibrant_list, int i) {
+  return calibrant_list[i].id;    
 }

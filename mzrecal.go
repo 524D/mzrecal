@@ -29,8 +29,8 @@ const progVersion = "0.1"
 // output from old versions
 const outputFormatVersion = "1.0"
 
-// Peptides m/z values within mergeMassTol are merged
-const mergeMassTol = float64(1e-7)
+// Peptides m/z values within mergeMzTol are merged
+const mergeMzTol = float64(1e-7)
 const protonMass = float64(1.007276466879)
 
 // CV parameters names
@@ -89,8 +89,11 @@ type recalParams struct {
 // computation must be done with these parameters to obtain the
 // final calibration
 type specRecalParams struct {
-	SpecIndex int
-	P         []float64
+	SpecIndex        int
+	P                []float64
+	CalsInRTWindow   int
+	CalsInMassWindow int
+	CalsUsed         int
 }
 
 type mzCalibrant struct {
@@ -307,7 +310,7 @@ func mergeSameMassCals(cals []calibrant) []calibrant {
 
 	prevMass := float64(-1)
 	for _, cal := range cals {
-		if math.Abs(cal.mass-prevMass) < mergeMassTol {
+		if math.Abs(cal.mass-prevMass) < mergeMzTol {
 			mcals[len(mcals)-1].name += `;` + cal.name
 		} else {
 			mcals = append(mcals, cal)
@@ -410,15 +413,19 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
 
-			debugLogSpecs(i, numSpecs, retentionTime, peaks, mzMatchingCals, par)
 			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
 				mzMatchingCals, par)
 			if err != nil {
 				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
 					i, err)
 			}
+			specRecalPar.CalsInRTWindow = len(mzCalibrants)
+			specRecalPar.CalsInMassWindow = len(mzMatchingCals)
+			specRecalPar.CalsUsed = len(calibrantsUsed)
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
-			_ = calibrantsUsed
+			debugLogSpecs(i, numSpecs, retentionTime, peaks, mzMatchingCals, par,
+				calibrantsUsed, recalMethod, specRecalPar)
+
 			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
 			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
@@ -577,15 +584,15 @@ Usage examples:
 
   %s BSA.mzML
      Read BSA.mzML and BSA.mzid, write recalibration coefficents
-     to BSA.recal.json.
+     to BSA-recal.json.
 
-  %s -mzid BSA_comet.mzid -cal BSA_comet.recal.json BSA.mzML
+  %s -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
      Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
-     to BSA_comet.recal.json
+     to BSA_comet-recal.json
 
   %s -recal BSA.mzML
-     Read BSA.mzML and BSA.recal.json, write recalibrated output to
-     BSA.recal.mzML
+     Read BSA.mzML and BSA-recal.json, write recalibrated output to
+     BSA-recal.mzML
 `, progName, progName, progName)
 }
 
@@ -610,14 +617,16 @@ Type %s --help for usage
 		*par.mzIdentMlFilename = startName + ".mzid"
 	}
 	if *par.calFilename == "" {
-		*par.calFilename = startName + ".recal.json"
+		*par.calFilename = startName + "-recal.json"
 	}
 	if *par.mzMLRecalFilename == "" {
-		*par.mzMLRecalFilename = startName + ".recal.mzML"
+		*par.mzMLRecalFilename = startName + "-recal.mzML"
 	}
 }
 
 func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
+
+	var precursorsUpdated, precursorsTotal int
 	recalMethod := recalMethodStr2Int(recal.RecalMethod)
 
 	// Make map to lookup recal parameters for a given spectrum index
@@ -633,6 +642,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 			return err
 		}
 		if MSLevel == 2 {
+			precursorsTotal++
 			precursors, err := mzML.GetPrecursors(i)
 			if err != nil {
 				return err
@@ -663,6 +673,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 									mzNew := mzRecal(Mz, &recalPars)
 									selectedIon.CvParam[k].Value =
 										strconv.FormatFloat(mzNew, 'f', 8, 64)
+									precursorsUpdated++
 								}
 							}
 						}
@@ -671,6 +682,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 			}
 		}
 	}
+	log.Printf("MS2 count: %d Updated:%d\n", precursorsTotal, precursorsUpdated)
 	return nil
 }
 
