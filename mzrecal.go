@@ -552,78 +552,6 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	return scoreFilt, nil
 }
 
-func usage() {
-	progName := filepath.Base(os.Args[0])
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", progName)
-	fmt.Fprintf(os.Stderr,
-		`
-This program can be used to recalibrate MS data in an mzML file
-using peptide identifications in an accompanying mzID file.
-
-Recalibration is divided in 2 steps:
-1) Computation of recalibration coefficients. The coefficients are stored
-   in a JSON file.
-   This step reads an mzML file and mzID file, matches measured peaks to
-   computed m/z values and computes recalibration coefficents using a method
-   that is usefull for the instrument type. The instrument type (and other
-   relavant values) are determined from the CV terms in the input files.
-2) Creating a recalibrated version of the MS file.
-   This step reads the mzML file and JSON file with recalibration values,
-   computes recalibrated m/z values for all peaks in spectra for which
-   a valid recalibration was found, and writes a recalibrated mzML file.
-
-The default operation is computation of the recalibration values (the
-first step). Flag -recal switches to creation of the recalibrated mzML
-file (the second step).
-
-`)
-	flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr,
-		`
-Usage examples:
-
-  %s BSA.mzML
-     Read BSA.mzML and BSA.mzid, write recalibration coefficents
-     to BSA-recal.json.
-
-  %s -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
-     Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
-     to BSA_comet-recal.json
-
-  %s -recal BSA.mzML
-     Read BSA.mzML and BSA-recal.json, write recalibrated output to
-     BSA-recal.mzML
-`, progName, progName, progName)
-}
-
-// sanatizeParams does some checks on parameters, and fills missing
-// filenames if possible
-func sanatizeParams(par *params) {
-	progName := filepath.Base(os.Args[0])
-
-	if len(par.args) != 1 {
-		fmt.Fprintf(os.Stderr, `Last argument must be name of mzML file.
-Type %s --help for usage
-`, progName)
-		os.Exit(2)
-	}
-
-	mzml := par.args[0]
-	par.mzMLFilename = &mzml
-	var extension = filepath.Ext(mzml)
-	var startName = mzml[0 : len(mzml)-len(extension)]
-
-	if *par.mzIdentMlFilename == "" {
-		*par.mzIdentMlFilename = startName + ".mzid"
-	}
-	if *par.calFilename == "" {
-		*par.calFilename = startName + "-recal.json"
-	}
-	if *par.mzMLRecalFilename == "" {
-		*par.mzMLRecalFilename = startName + "-recal.mzML"
-	}
-}
-
 func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 
 	var precursorsUpdated, precursorsTotal int
@@ -782,6 +710,78 @@ func makeRecalCoefficients(par params) {
 	}
 }
 
+// sanatizeParams does some checks on parameters, and fills missing
+// filenames if possible
+func sanatizeParams(par *params) {
+	progName := filepath.Base(os.Args[0])
+
+	if len(par.args) != 1 {
+		fmt.Fprintf(os.Stderr, `Last argument must be name of mzML file.
+Type %s --help for usage
+`, progName)
+		os.Exit(2)
+	}
+
+	mzml := par.args[0]
+	par.mzMLFilename = &mzml
+	var extension = filepath.Ext(mzml)
+	var startName = mzml[0 : len(mzml)-len(extension)]
+
+	if *par.mzIdentMlFilename == "" {
+		*par.mzIdentMlFilename = startName + ".mzid"
+	}
+	if *par.calFilename == "" {
+		*par.calFilename = startName + "-recal.json"
+	}
+	if *par.mzMLRecalFilename == "" {
+		*par.mzMLRecalFilename = startName + "-recal.mzML"
+	}
+}
+
+func usage() {
+	progName := filepath.Base(os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage of %s:\n", progName)
+	fmt.Fprintf(os.Stderr,
+		`
+This program can be used to recalibrate MS data in an mzML file
+using peptide identifications in an accompanying mzID file.
+
+Recalibration is divided in 2 steps:
+1) Computation of recalibration coefficients. The coefficients are stored
+   in a JSON file.
+   This step reads an mzML file and mzID file, matches measured peaks to
+   computed m/z values and computes recalibration coefficents using a method
+   that is usefull for the instrument type. The instrument type (and other
+   relavant values) are determined from the CV terms in the input files.
+2) Creating a recalibrated version of the MS file.
+   This step reads the mzML file and JSON file with recalibration values,
+   computes recalibrated m/z values for all peaks in spectra for which
+   a valid recalibration was found, and writes a recalibrated mzML file.
+
+The default operation is computation of the recalibration values (the
+first step). Flag -recal switches to creation of the recalibrated mzML
+file (the second step).
+
+`)
+	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr,
+		`
+Usage examples:
+
+  %s BSA.mzML
+     Read BSA.mzML and BSA.mzid, write recalibration coefficents
+     to BSA-recal.json.
+
+  %s -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
+     Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
+     to BSA_comet-recal.json
+
+  %s -recal BSA.mzML
+     Read BSA.mzML and BSA-recal.json, write recalibrated output to
+     BSA-recal.mzML
+`, progName, progName, progName)
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var par params
@@ -789,7 +789,7 @@ func main() {
 	par.recal = flag.Bool("recal", false,
 		`Switch between computation of recalibration parameters (default) and actual
 	recalibration`)
-	par.mzMLRecalFilename = flag.String("mzRecal",
+	par.mzMLRecalFilename = flag.String("mzmlOut",
 		"",
 		"recalibrated mzML filename (only together with -recal)\n")
 	par.mzIdentMlFilename = flag.String("mzid",
