@@ -57,13 +57,15 @@ type params struct {
 	calFilename       *string  // Filename where JSON calibration parameters will be written
 	minCal            *int     // minimum number of calibrants a spectrum should have to be recalibrated
 	minPeak           *float64 // minimum intensity of peaks to be considered for recalibrating
-	lowRT             *float64 // lower rt window boundary
-	upRT              *float64 // upper rt window boundary
+	rtWindow          *string  // retention time window
+	lowRT             float64  // lower rt window boundary
+	upRT              float64  // upper rt window boundary
 	mzErrPPM          *float64 // max mz error for trying a calibrant in calibrant
 	mzTargetPPM       *float64 // max mz error for accepting a calibrant in calibration
 	scoreFilter       *string  // PSM score filter to apply
-	minCharge         *int     // min m/z for calibrants
-	maxCharge         *int     // max m/z for calibrants
+	charge            *string  // Charge range for calibrants
+	minCharge         int      // min m/z for calibrants
+	maxCharge         int      // max m/z for calibrants
 	args              []string // Addtional values passed on the command line
 }
 
@@ -203,6 +205,63 @@ type peaksByMass []mzml.Peak
 func (a peaksByMass) Len() int           { return len(a) }
 func (a peaksByMass) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a peaksByMass) Less(i, j int) bool { return a[i].Mz < a[j].Mz }
+
+// Parse string like "-12:6" into 2 values, -12 and 6
+// Parameters min and max are the "default" min/max values,
+// when a value is not specified (e.g. "-12:"), the defauls is assigned
+func parseIntRange(r string, min int, max int) (int, int, error) {
+	re := regexp.MustCompile(`\s*(\-?\d*):(\-?\d*)`)
+	m := re.FindStringSubmatch(r)
+	minOut := min
+	maxOut := max
+	if m[1] != "" {
+		minOut, _ = strconv.Atoi(m[1])
+		if minOut < min {
+			minOut = min
+		}
+	}
+	if m[2] != "" {
+		maxOut, _ = strconv.Atoi(m[2])
+		if maxOut > max {
+			maxOut = max
+		}
+	}
+	var err error
+	if minOut > maxOut {
+		err = errors.New("parseIntRange min>max")
+		minOut = maxOut
+	}
+	return minOut, maxOut, err
+}
+
+// Parse string like "-12.01e1:+6" into 2 values, -120.1 and 6.0
+// Parameters min and max are the "default" min/max values,
+// when a value is not specified (e.g. "-12.01e1:"), the defauls is assigned
+func parseFloat64Range(r string, min float64, max float64) (
+	float64, float64, error) {
+	re := regexp.MustCompile(`\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?):([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)`)
+	m := re.FindStringSubmatch(r)
+	minOut := min
+	maxOut := max
+	if m[1] != "" {
+		minOut, _ = strconv.ParseFloat(m[1], 64)
+		if minOut < min {
+			minOut = min
+		}
+	}
+	if m[3] != "" {
+		maxOut, _ = strconv.ParseFloat(m[3], 64)
+		if maxOut > max {
+			maxOut = max
+		}
+	}
+	var err error
+	if minOut > maxOut {
+		err = errors.New("parseFloat64Range min>max")
+		minOut = maxOut
+	}
+	return minOut, maxOut, err
+}
 
 // Compute the lowest isotope mass of the peptide
 func pepMass(pepSeq string) (float64, error) {
@@ -384,8 +443,8 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			if err != nil {
 				return recal, err
 			}
-			wCals, err := calibsInRtWindows(retentionTime-*par.lowRT,
-				retentionTime+*par.upRT, cals)
+			wCals, err := calibsInRtWindows(retentionTime+par.lowRT,
+				retentionTime+par.upRT, cals)
 			if err != nil {
 				return recal, err
 			}
@@ -394,13 +453,13 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			// Make slice with mz values for all calibrants
 			// For efficiency, pre-allocate (more than) enough elements
 			mzCalibrants := make([]mzCalibrant, 0,
-				len(specCals)*(*par.maxCharge-*par.minCharge))
+				len(specCals)*(par.maxCharge-par.minCharge))
 			for j, cal := range specCals {
 				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
 				if cal.singleCharged {
 					mzCalibrants = append(mzCalibrants, newMzCalibrant(1, &specCals[j]))
 				} else {
-					for charge := *par.minCharge; charge <= *par.maxCharge; charge++ {
+					for charge := par.minCharge; charge <= par.maxCharge; charge++ {
 						mzCalibrants = append(mzCalibrants, newMzCalibrant(charge, &specCals[j]))
 					}
 				}
@@ -512,39 +571,25 @@ func writeRecalMzML(mzML mzml.MzML, recal recalParams, par params) error {
 
 func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	scoreFilt := make(scoreFilter)
-	var err error
 
-	re := regexp.MustCompile(`([^\(]+)\(([^\:\)]*):([^\:\)]*)\)`)
+	re := regexp.MustCompile(`([^\(]+)\(([^\)]*)\)`)
 	matchedStringsList := re.FindAllStringSubmatch(scoreFilterStr, -1)
 	if matchedStringsList != nil {
 		for n, matchedStrings := range matchedStringsList {
+
 			scoreName := matchedStrings[1]
-			scoreMinStr := matchedStrings[2]
-			scoreMaxStr := matchedStrings[3]
+			scoreRangeStr := matchedStrings[2]
 			_, ok := scoreFilt[scoreName]
 			if ok {
-
 				return nil, errors.New(scoreName + ` defined more than once.`)
 			}
-			if scoreMinStr == `` && scoreMaxStr == `` {
-				return nil, errors.New(`Both minscore and maxscore are empty for ` + scoreName)
+			minScore, maxScore, err := parseFloat64Range(scoreRangeStr,
+				-math.MaxFloat64, math.MaxFloat64)
+
+			if err != nil {
+				return nil, errors.New(`Invalid range for score ` + scoreName)
 			}
-			scRange := scoreRange{minScore: -math.MaxFloat64, maxScore: math.MaxFloat64, priority: n}
-			if scoreMinStr != `` {
-				scRange.minScore, err = strconv.ParseFloat(scoreMinStr, 64)
-				if err != nil {
-					return nil, err
-				}
-			}
-			if scoreMaxStr != `` {
-				scRange.maxScore, err = strconv.ParseFloat(scoreMaxStr, 64)
-				if err != nil {
-					return nil, err
-				}
-			}
-			if scRange.minScore > scRange.maxScore {
-				return nil, errors.New(`minscore > maxscore for ` + scoreName)
-			}
+			scRange := scoreRange{minScore: minScore, maxScore: maxScore, priority: n}
 			scoreFilt[scoreName] = scRange
 		}
 	}
@@ -736,6 +781,26 @@ Type %s --help for usage
 	if *par.mzMLRecalFilename == "" {
 		*par.mzMLRecalFilename = startName + "-recal.mzML"
 	}
+
+	var err error
+	par.lowRT, par.upRT, err = parseFloat64Range(*par.rtWindow,
+		-math.MaxFloat64, math.MaxFloat64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, `Invalid rtWindow.
+Type %s --help for usage
+`, progName)
+		os.Exit(2)
+	}
+
+	par.minCharge, par.maxCharge, err = parseIntRange(*par.charge,
+		1, 5)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, `Invalid charge range.
+	Type %s --help for usage
+	`, progName)
+		os.Exit(2)
+	}
+
 }
 
 func usage() {
@@ -804,12 +869,9 @@ func main() {
 	par.minPeak = flag.Float64("minPeak",
 		10000,
 		"minimum intensity of peaks to be considered for recalibrating\n")
-	par.lowRT = flag.Float64("lowRT",
-		10,
-		"lower rt window boundary (s)\n")
-	par.upRT = flag.Float64("upRT",
-		10,
-		"upper rt window boundary (s)\n")
+	par.rtWindow = flag.String("rt",
+		"-10.0:10.0",
+		"rt window (s)\n")
 	par.mzErrPPM = flag.Float64("mzTry",
 		10.0,
 		"max mz error (ppm) for trying to use calibrant for calibration\n")
@@ -828,13 +890,9 @@ MS:1002257 (Comet:expectation value)
 MS:1001159 (SEQUEST:expectation value)
 MS:1002466 (PeptideShaker PSM score)
 `)
-	par.minCharge = flag.Int("mincharge",
-		1,
-		"min charge of calibrants\n")
-	par.maxCharge = flag.Int("maxcharge",
-		5,
-		"max charge of calibrants\n")
-
+	par.charge = flag.String("charge",
+		"1:5",
+		"charge range of calibrants\n")
 	flag.Usage = usage
 	flag.Parse()
 	par.args = flag.Args()

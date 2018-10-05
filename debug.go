@@ -5,44 +5,13 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"math"
 	"mzrecal/mzml"
-	"regexp"
-	"strconv"
 )
 
 var debugSpecs *string // Print debug output for given spectrum range
-
-// Parse string like "-12:6" into 2 values, -12 and 6
-// Parameters min and max are the "default" min/max values,
-// when a value is not specified (e.g. "-12:"), the defauls is assigned
-func parseIntRange(r string, min int, max int) (int, int, error) {
-	re := regexp.MustCompile(`\s*(\-?\d*):(\-?\d*)`)
-	m := re.FindStringSubmatch(r)
-	minOut := min
-	maxOut := max
-	if m[1] != "" {
-		minOut, _ = strconv.Atoi(m[1])
-		if minOut < min {
-			minOut = min
-		}
-	}
-	if m[2] != "" {
-		maxOut, _ = strconv.Atoi(m[2])
-		if maxOut > max {
-			maxOut = max
-		}
-	}
-	var err error
-	if minOut > maxOut {
-		err = errors.New("parseIntRange min>max")
-		minOut = maxOut
-	}
-	return minOut, maxOut, err
-}
 
 func init() {
 	debugSpecs = flag.String("debug", "",
@@ -79,9 +48,9 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 					if mzMatchingCals[k].cal.retentionTime != -math.MaxFloat64 {
 						rtShift = retentionTime - mzMatchingCals[k].cal.retentionTime
 						if rtShift < 0 {
-							rtRel = rtShift / *par.lowRT
+							rtRel = rtShift / -par.lowRT
 						} else {
-							rtRel = rtShift / *par.upRT
+							rtRel = rtShift / par.upRT
 						}
 					}
 					mzRel := 100000000.0 * (p.Mz/mzMatchingCals[k].mz - 1.0) / (*par.mzErrPPM)
