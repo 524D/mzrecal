@@ -9,6 +9,8 @@
 
 // Maximum number of iterations fro the FDF solver
 #define MAX_FDF_SOLVER_ITER 500
+#define EPS_ABS 1e-9
+#define EPS_REL 1e-9
 
 double mz_recalX(double mz_meas, cal_params_t *p)
 {
@@ -21,7 +23,7 @@ double mz_recalX(double mz_meas, cal_params_t *p)
     case CALIB_TOF: // FIXME: implement correct calib function
         mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
         break;
-    case CALIB_ORBITRAP: { // FIXME: implement correct calib function
+    case CALIB_ORBITRAP: {
         // mz_calib = A/(f*f) = A / (1/sqrt(mz_meas) * 1/sqrt(mz_meas))
         //          = A*mz_meas
         mz_calib = p->cal_pars[0]*mz_meas;
@@ -72,7 +74,7 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         }
         break;
     }
-    case CALIB_ORBITRAP: { // FIXME: implement correct function
+    case CALIB_ORBITRAP: {
         double a = gsl_vector_get (x, 0);
         double mz_calib;
         double freq;
@@ -127,7 +129,7 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
         }
        break;
     }
-    case CALIB_ORBITRAP: { // FIXME: implement correct function
+    case CALIB_ORBITRAP: {
         double a = gsl_vector_get (x, 0);
         size_t i;
 
@@ -217,7 +219,7 @@ cal_params_t recalibratePeaks(recal_data_t *d,
 
             if (status)
                 break;
-            status=gsl_multifit_test_delta (s->dx, s->x, 1e-9, 1e-9);
+            status=gsl_multifit_test_delta (s->dx, s->x, EPS_ABS, EPS_REL);
         } while (status==GSL_CONTINUE && iter<MAX_FDF_SOLVER_ITER);
 
         for (vi=0; vi<cal_params.nr_cal_pars; vi++) {
@@ -264,5 +266,5 @@ void fill_calibrant_list(calibrant_t *calibrant_list, int i,
 // Function get_calibrant_id is only needed because directly accessing
 // a C "pointer array" from Go is a bit messy.
 int get_calibrant_id(calibrant_t *calibrant_list, int i) {
-  return calibrant_list[i].id;    
+  return calibrant_list[i].id;
 }
