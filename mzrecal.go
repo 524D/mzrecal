@@ -64,6 +64,7 @@ type params struct {
 	mzTargetPPM       *float64 // max mz error for accepting a calibrant in calibration
 	scoreFilter       *string  // PSM score filter to apply
 	charge            *string  // Charge range for calibrants
+	useIdentCharge    bool     // Use only chage as found in identification
 	minCharge         int      // min m/z for calibrants
 	maxCharge         int      // max m/z for calibrants
 	args              []string // Addtional values passed on the command line
@@ -73,6 +74,7 @@ type calibrant struct {
 	name          string
 	mass          float64 // Uncharged mass
 	retentionTime float64
+	charge        int
 	singleCharged bool
 }
 
@@ -120,42 +122,49 @@ var fixedCalibrants = []calibrant{
 		name:          `cyclosiloxane6`,
 		mass:          444.1127481,
 		retentionTime: -math.MaxFloat64, // Indicates any retention time
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane7`,
 		mass:          518.1315394,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane8`,
 		mass:          592.1503308,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane9`,
 		mass:          666.1691221,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane10`,
 		mass:          740.1879134,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane11`,
 		mass:          814.2067048,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 	calibrant{
 		name:          `cyclosiloxane12`,
 		mass:          888.2254961,
 		retentionTime: -math.MaxFloat64,
+		charge:        1,
 		singleCharged: true,
 	},
 }
@@ -319,6 +328,7 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 			if err == nil { // Skip if mass cannot be computed
 				cal.name = ident.PepID
 				cal.retentionTime = ident.RetentionTime
+				cal.charge = ident.Charge
 				cal.singleCharged = false
 				cal.mass = m + ident.ModMass
 				cals = append(cals, cal)
@@ -459,8 +469,12 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 				if cal.singleCharged {
 					mzCalibrants = append(mzCalibrants, newMzCalibrant(1, &specCals[j]))
 				} else {
-					for charge := par.minCharge; charge <= par.maxCharge; charge++ {
-						mzCalibrants = append(mzCalibrants, newMzCalibrant(charge, &specCals[j]))
+					if par.useIdentCharge {
+						mzCalibrants = append(mzCalibrants, newMzCalibrant(cal.charge, &specCals[j]))
+					} else {
+						for charge := par.minCharge; charge <= par.maxCharge; charge++ {
+							mzCalibrants = append(mzCalibrants, newMzCalibrant(charge, &specCals[j]))
+						}
 					}
 				}
 			}
@@ -791,16 +805,18 @@ Type %s --help for usage
 `, progName)
 		os.Exit(2)
 	}
-
-	par.minCharge, par.maxCharge, err = parseIntRange(*par.charge,
-		1, 5)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, `Invalid charge range.
+	if *par.charge == `ident` {
+		par.useIdentCharge = true
+	} else {
+		par.minCharge, par.maxCharge, err = parseIntRange(*par.charge,
+			1, 5)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, `Invalid charge range.
 	Type %s --help for usage
 	`, progName)
-		os.Exit(2)
+			os.Exit(2)
+		}
 	}
-
 }
 
 func usage() {
@@ -808,31 +824,47 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", progName)
 	fmt.Fprintf(os.Stderr,
 		`
-This program can be used to recalibrate MS data in an mzML file
-using peptide identifications in an accompanying mzID file.
+USAGE:
+  %s [options] <mzMLfile>
 
-Recalibration is divided in 2 steps:
-1) Computation of recalibration coefficients. The coefficients are stored
-   in a JSON file.
-   This step reads an mzML file and mzID file, matches measured peaks to
-   computed m/z values and computes recalibration coefficents using a method
-   that is usefull for the instrument type. The instrument type (and other
-   relavant values) are determined from the CV terms in the input files.
-2) Creating a recalibrated version of the MS file.
-   This step reads the mzML file and JSON file with recalibration values,
-   computes recalibrated m/z values for all peaks in spectra for which
-   a valid recalibration was found, and writes a recalibrated mzML file.
+  This program can be used to recalibrate MS data in an mzML file
+  using peptide identifications in an accompanying mzID file.
 
-The default operation is computation of the recalibration values (the
-first step). Flag -recal switches to creation of the recalibrated mzML
-file (the second step).
+  Recalibration is divided in 2 steps:
+  1) Computation of recalibration coefficients. The coefficients are stored
+     in a JSON file.
+     This step reads an mzML file and mzID file, matches measured peaks to
+     computed m/z values and computes recalibration coefficents using a method
+     that is usefull for the instrument type. The instrument type (and other
+     relavant values) are determined from the CV terms in the input files.
+  2) Creating a recalibrated version of the MS file.
+     This step reads the mzML file and JSON file with recalibration values,
+     computes recalibrated m/z values for all peaks in spectra for which
+     a valid recalibration was found, and writes a recalibrated mzML file.
 
-`)
+  The default operation is computation of the recalibration values (the
+  first step). Flag -recal switches to creation of the recalibrated mzML
+  file (the second step).
+
+OPTIONS:
+`, progName)
 	flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr,
 		`
-Usage examples:
+BUILD-IN CALIBRANTS:
+  In addition to the identified peptides, %s will also use
+  for recalibration a number of compounds that are commonly found in many
+  samples. These compound are all assumed to have +1 charge. The following
+  list shows the build-in compounds with their (uncharged) masses:
+`, progName)
 
+	for _, cal := range fixedCalibrants {
+		fmt.Printf("     %s (%f)\n", cal.name, cal.mass)
+	}
+
+	fmt.Fprintf(os.Stderr,
+		`
+USAGE EXAMPLES:
   %s BSA.mzML
      Read BSA.mzML and BSA.mzid, write recalibration coefficents
      to BSA-recal.json.
@@ -892,7 +924,9 @@ MS:1002466 (PeptideShaker PSM score)
 `)
 	par.charge = flag.String("charge",
 		"1:5",
-		"charge range of calibrants\n")
+		`charge range of calibrants, or the string "ident". If set to "ident",
+only the charge as found in the mzIdentMl file will be used for calibration.
+`)
 	flag.Usage = usage
 	flag.Parse()
 	par.args = flag.Args()

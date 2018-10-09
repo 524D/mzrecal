@@ -24,6 +24,7 @@ type identRef struct {
 type Identification struct {
 	PepSeq        string
 	PepID         string
+	Charge        int
 	ModMass       float64
 	SpecID        string
 	RetentionTime float64
@@ -56,8 +57,9 @@ type spectrumIdentificationResult struct {
 }
 
 type spectrumIdentificationItem struct {
-	PeptideRef string    `xml:"peptide_ref,attr"`
-	CvParam    []cvParam `xml:"cvParam"`
+	ChargeState int       `xml:"chargeState,attr"`
+	PeptideRef  string    `xml:"peptide_ref,attr"`
+	CvParam     []cvParam `xml:"cvParam"`
 }
 
 type cvParam struct {
