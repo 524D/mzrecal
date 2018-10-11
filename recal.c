@@ -12,6 +12,18 @@
 #define EPS_ABS 1e-9
 #define EPS_REL 1e-9
 
+static double mz_recal_poly_n(double mz_meas, cal_params_t *p, int degree)
+{
+  int i;
+  double mp = 1.0;
+  double mz_calib = 0.0;
+  for (i=0; i<=degree; i++) {
+      mz_calib += p->cal_pars[i]*mp;
+      mp *= mz_meas;
+  }
+  return mz_calib;
+}
+
 double mz_recalX(double mz_meas, cal_params_t *p)
 {
     double mz_calib;
@@ -23,17 +35,55 @@ double mz_recalX(double mz_meas, cal_params_t *p)
     case CALIB_TOF: // FIXME: implement correct calib function
         mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
         break;
-    case CALIB_ORBITRAP: {
+    case CALIB_ORBITRAP:
         // mz_calib = A/(f*f) = A / (1/sqrt(mz_meas) * 1/sqrt(mz_meas))
         //          = A*mz_meas
         mz_calib = p->cal_pars[0]*mz_meas;
         break;
-    }
+    case CALIB_POLY1:
+        mz_calib = mz_recal_poly_n(mz_meas, p, 1);
+        break;
+    case CALIB_POLY2:
+        mz_calib = mz_recal_poly_n(mz_meas, p, 2);
+        break;
+    case CALIB_POLY3:
+        mz_calib = mz_recal_poly_n(mz_meas, p, 3);
+        break;
+    case CALIB_POLY4:
+        mz_calib = mz_recal_poly_n(mz_meas, p, 4);
+        break;
+    case CALIB_POLY5:
+        mz_calib = mz_recal_poly_n(mz_meas, p, 5);
+        break;
     default:
         mz_calib = mz_meas;
         break;
     }
     return mz_calib;
+}
+
+static void calib_f_poly_n(const gsl_vector *x, recal_data_t *recal_data_p,
+   gsl_vector *f, int degree)
+{
+  int i, j;
+  double mz_pow, mz_meas, mz_calib, cal_pars[MAX_CAL_PARS];
+  calibrant_t *calibrants = recal_data_p->calibrants;
+  int n_calibrants = recal_data_p->n_calibrants;
+
+  for (j=0; j<=degree; j++) {
+      cal_pars[j] = gsl_vector_get (x, j);
+  }
+
+  for (i=0;i<n_calibrants;i++) {
+    mz_pow = 1.0;
+    mz_calib = 0.0;
+    mz_meas = calibrants[i].mz_meas;
+    for (j=0; j<=degree; j++) {
+        mz_calib += cal_pars[j]*mz_pow;
+        mz_pow *= mz_meas;
+    }
+    gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
+  }
 }
 
 int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
@@ -42,35 +92,34 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 
     calibrant_t *calibrants = recal_data_p->calibrants;
     int n_calibrants = recal_data_p->n_calibrants;
+    size_t i;
 
     switch (recal_data_p->calib_method) {
     case CALIB_FTICR: {
         double a = gsl_vector_get (x, 0);
         double b = gsl_vector_get (x, 1);
-        double M;
+        double mz_calib;
         double freq;
-        size_t i;
 
         for (i=0;i<n_calibrants;i++) {
             // Model m = a/(f-b) (CAL2 inverted)
             freq= 1/calibrants[i].mz_meas;
-            M = a/(freq-b);
-            gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+            mz_calib = a/(freq-b);
+            gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
         }
         break;
     }
     case CALIB_TOF: { // FIXME: implement correct function
         double a = gsl_vector_get (x, 0);
         double b = gsl_vector_get (x, 1);
-        double M;
+        double mz_calib;
         double freq;
-        size_t i;
 
         for (i=0;i<n_calibrants;i++) {
             // Model m = a/(f-b) (CAL2 inverted)
             freq= 1/calibrants[i].mz_meas;
-            M = a/(freq-b);
-            gsl_vector_set (f, i, (M-calibrants[i].mz_calc)); // absolute or relative error?
+            mz_calib = a/(freq-b);
+            gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
         }
         break;
     }
@@ -78,7 +127,6 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         double a = gsl_vector_get (x, 0);
         double mz_calib;
         double freq;
-        size_t i;
 
         for (i=0;i<n_calibrants;i++) {
             // Model m = a/(f*f) (CAL2 inverted)
@@ -87,7 +135,22 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
             gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
         }
         break;
-     }
+    }
+    case CALIB_POLY1:
+        calib_f_poly_n(x, recal_data_p, f, 1);
+        break;
+    case CALIB_POLY2:
+        calib_f_poly_n(x, recal_data_p, f, 2);
+        break;
+    case CALIB_POLY3:
+        calib_f_poly_n(x, recal_data_p, f, 3);
+        break;
+    case CALIB_POLY4:
+        calib_f_poly_n(x, recal_data_p, f, 4);
+        break;
+    case CALIB_POLY5:
+        calib_f_poly_n(x, recal_data_p, f, 5);
+        break;
      default:
          break;
      }
@@ -101,13 +164,13 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 
     calibrant_t *calibrants = recal_data_p->calibrants;
     int n_calibrants = recal_data_p->n_calibrants;
+    size_t i;
 
     switch (recal_data_p->calib_method) {
     case CALIB_FTICR: {
         double a = gsl_vector_get (x, 0);
         double b = gsl_vector_get (x, 1);
         double freq;
-        size_t i;
 
         for (i=0;i<n_calibrants;i++) {
             freq=1/calibrants[i].mz_meas;
@@ -117,27 +180,78 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
         break;
     }
     case CALIB_TOF: { // FIXME: implement correct function
-        double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
+        double a = gsl_vector_get(x, 0);
+        double b = gsl_vector_get(x, 1);
         double freq;
-        size_t i;
 
         for (i=0;i<n_calibrants;i++) {
             freq=1/calibrants[i].mz_meas;
-            gsl_matrix_set (J,i,0, 1/(freq-b) );
-            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+            gsl_matrix_set(J, i, 0, 1/(freq-b) );
+            gsl_matrix_set(J, i, 1, a/((freq-b)*(freq-b)));
         }
        break;
     }
-    case CALIB_ORBITRAP: {
-        double a = gsl_vector_get (x, 0);
-        size_t i;
-
+    case CALIB_ORBITRAP:
         for (i=0;i<n_calibrants;i++) {
-            gsl_matrix_set (J,i,0, calibrants[i].mz_meas );
+            gsl_matrix_set (J, i, 0, calibrants[i].mz_meas);
         }
         break;
-    }
+    case CALIB_POLY1:
+        for (i=0;i<n_calibrants;i++) {
+            gsl_matrix_set(J, i, 0, 1);
+            gsl_matrix_set(J, i, 1, calibrants[i].mz_meas);
+        }
+        break;
+    case CALIB_POLY2:
+        for (i=0;i<n_calibrants;i++) {
+            double mz_meas = calibrants[i].mz_meas;
+            gsl_matrix_set(J, i, 0, 1);
+            gsl_matrix_set(J, i, 1, mz_meas);
+            gsl_matrix_set(J, i, 2, mz_meas * mz_meas);
+        }
+        break;
+    case CALIB_POLY3:
+        for (i=0;i<n_calibrants;i++) {
+            double mz_meas = calibrants[i].mz_meas;
+            double m_pow = mz_meas;
+            gsl_matrix_set(J, i, 0, 1);
+            gsl_matrix_set(J, i, 1, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 2, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 3, m_pow);
+        }
+     break;
+    case CALIB_POLY4:
+        for (i=0;i<n_calibrants;i++) {
+            double mz_meas = calibrants[i].mz_meas;
+            double m_pow = mz_meas;
+            gsl_matrix_set(J, i, 0, 1);
+            gsl_matrix_set(J, i, 1, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 2, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 3, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 4, m_pow);
+        }
+        break;
+    case CALIB_POLY5:
+        for (i=0;i<n_calibrants;i++) {
+            double mz_meas = calibrants[i].mz_meas;
+            double m_pow = mz_meas;
+            gsl_matrix_set(J, i, 0, 1);
+            gsl_matrix_set(J, i, 1, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 2, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 3, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 4, m_pow);
+            m_pow *= mz_meas;
+            gsl_matrix_set(J, i, 5, m_pow);
+        }
+        break;
     default:
         break;
     }
@@ -147,32 +261,56 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 // FDF Calibrator
 int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
 {
-     calib_f (x,params,f);
-     calib_df (x,params,J);
+     calib_f(x, params, f);
+     calib_df(x, params, J);
      return GSL_SUCCESS;
 }
 
 void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
+    int i;
+
     cal_params->calib_method = calib_method;
-    // Initialize calibration paramters close to the optimum
+    // Initialize calibration parameters close to the optimum
+    // For simplicity, init all values to zero
+    for (i=0; i<MAX_CAL_PARS; i++) {
+        cal_params->cal_pars[i] = 0.0;
+    }
     switch (calib_method) {
     case CALIB_FTICR:
         cal_params->cal_pars[0] = 1.0;
-        cal_params->cal_pars[1] = 0.0;
         cal_params->nr_cal_pars = 2;
         break;
     case CALIB_TOF:
     // FIXME: fill in correct init parameters
         cal_params->cal_pars[0] = 1.0;
-        cal_params->cal_pars[1] = 0.0;
         cal_params->nr_cal_pars = 2;
         break;
     case CALIB_ORBITRAP:
         cal_params->cal_pars[0] = 1.0;
         cal_params->nr_cal_pars = 1;
         break;
+    case CALIB_POLY1:
+        cal_params->cal_pars[1] = 1.0;
+        cal_params->nr_cal_pars = 2;
+        break;
+    case CALIB_POLY2:
+        cal_params->cal_pars[1] = 1.0;
+        cal_params->nr_cal_pars = 3;
+        break;
+    case CALIB_POLY3:
+        cal_params->cal_pars[1] = 1.0;
+        cal_params->nr_cal_pars = 4;
+        break;
+    case CALIB_POLY4:
+        cal_params->cal_pars[1] = 1.0;
+        cal_params->nr_cal_pars = 5;
+        break;
+    case CALIB_POLY5:
+        cal_params->cal_pars[1] = 1.0;
+        cal_params->nr_cal_pars = 6;
+        break;
     default:
-     		cal_params->nr_cal_pars = 0;
+        cal_params->nr_cal_pars = 0;
     break;
     }
 }
@@ -208,6 +346,7 @@ cal_params_t recalibratePeaks(recal_data_t *d,
         iter=0;
         T = gsl_multifit_fdfsolver_lmder;
         s = gsl_multifit_fdfsolver_alloc (T, d->n_calibrants, cal_params.nr_cal_pars);
+
         func.n = d->n_calibrants;
         func.p = cal_params.nr_cal_pars;
         func.params = d;

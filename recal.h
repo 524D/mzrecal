@@ -7,6 +7,11 @@ typedef enum {
     CALIB_FTICR,
     CALIB_TOF,
     CALIB_ORBITRAP,
+    CALIB_POLY1,
+    CALIB_POLY2,
+    CALIB_POLY3,
+    CALIB_POLY4,
+    CALIB_POLY5,
 } calib_method_t;
 
 // The maximum number of calibration parameters of any calibration function

@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"mzrecal/mzidentml"
 	"mzrecal/mzml"
@@ -46,6 +47,11 @@ const (
 	calibFTICR
 	calibTOF
 	calibOrbitrap
+	calibPoly1
+	calibPoly2
+	calibPoly3
+	calibPoly4
+	calibPoly5
 )
 
 // Command line parameters
@@ -62,6 +68,7 @@ type params struct {
 	upRT              float64  // upper rt window boundary
 	mzErrPPM          *float64 // max mz error for trying a calibrant in calibrant
 	mzTargetPPM       *float64 // max mz error for accepting a calibrant in calibration
+	recalMethod       *string  // Recal method as specfied by user
 	scoreFilter       *string  // PSM score filter to apply
 	charge            *string  // Charge range for calibrants
 	useIdentCharge    bool     // Use only chage as found in identification
@@ -417,17 +424,29 @@ func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
 	return calibNone, `NONE`, nil
 }
 
-func recalMethodStr2Int(recalMethodStr string) int {
+func recalMethodStr2Int(recalMethodStr string) (int, error) {
 	var recalMethod int
-	switch recalMethodStr {
+	switch strings.ToUpper(recalMethodStr) {
 	case `FTICR`:
 		recalMethod = calibFTICR
 	case `TOF`:
 		recalMethod = calibTOF
-	case `Orbitrap`:
+	case `ORBITRAP`:
 		recalMethod = calibOrbitrap
+	case `POLY1`:
+		recalMethod = calibPoly1
+	case `POLY2`:
+		recalMethod = calibPoly2
+	case `POLY3`:
+		recalMethod = calibPoly3
+	case `POLY4`:
+		recalMethod = calibPoly4
+	case `POLY5`:
+		recalMethod = calibPoly5
+	default:
+		return 0, errors.New("Unknown recalibration method: " + recalMethodStr)
 	}
-	return recalMethod
+	return recalMethod, nil
 }
 
 func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
@@ -436,7 +455,12 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 	var recalMethod int
 
 	recal.MzRecalVersion = outputFormatVersion
-	recalMethod, recal.RecalMethod, err = instrument2RecalMethod(mzML)
+	if *par.recalMethod == `` {
+		recalMethod, recal.RecalMethod, err = instrument2RecalMethod(mzML)
+	} else {
+		recalMethod, err = recalMethodStr2Int(*par.recalMethod)
+		recal.RecalMethod = *par.recalMethod
+	}
 	if err != nil {
 		return recal, err
 	}
@@ -614,7 +638,10 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 
 	var precursorsUpdated, precursorsTotal int
-	recalMethod := recalMethodStr2Int(recal.RecalMethod)
+	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
+	if err != nil {
+		return err
+	}
 
 	// Make map to lookup recal parameters for a given spectrum index
 	specIndex2recalIndex := make(map[int]int)
@@ -696,7 +723,10 @@ func doRecal(par params) {
 		log.Fatalf("readRecal: error return %v", err)
 	}
 
-	recalMethod := recalMethodStr2Int(recal.RecalMethod)
+	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
+	if err != nil {
+		log.Fatalf("recalMethodStr2Int: error return %v", err)
+	}
 
 	for _, specRecalPar := range recal.SpecRecalPar {
 		// Skip spectra for which no recalibration coefficients are available
@@ -883,6 +913,13 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var par params
 
+	par.recalMethod = flag.String("func",
+		"",
+		`recalibration function to apply. If empty, a suitable
+	function is determined from the instrument specified in the mzML file.
+	Valid function names:
+  	FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
+	  POLY<N>: Polynomial with degee <N> (range 1:5)`)
 	par.recal = flag.Bool("recal", false,
 		`Switch between computation of recalibration parameters (default) and actual
 	recalibration`)
