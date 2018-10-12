@@ -30,7 +30,7 @@ double mz_recalX(double mz_meas, cal_params_t *p)
     switch (p->calib_method) {
     case CALIB_FTICR:
         // mz_calib = Ca/((1/mz_meas)-Cb)
-        mz_calib = (p->cal_pars[0])/((1/mz_meas)-(p->cal_pars[1]));
+        mz_calib = (p->cal_pars[1])/((1/mz_meas)-(p->cal_pars[0]));
         break;
     case CALIB_TOF:
         mz_calib = mz_recal_poly_n(mz_meas, p, 2);
@@ -38,8 +38,8 @@ double mz_recalX(double mz_meas, cal_params_t *p)
     case CALIB_ORBITRAP: {
         // mz_calib = A/((f-B)^2) =
         //      A / ((1/sqrt(mz_meas))-B)^2
-        double a = p->cal_pars[0];
-        double b = p->cal_pars[1];
+        double a = p->cal_pars[1];
+        double b = p->cal_pars[0];
         double freq;
         double x;
 
@@ -94,7 +94,7 @@ static void calib_f_poly_n(const gsl_vector *x, recal_data_t *recal_data_p,
   }
 }
 
-int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
+static int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 {
     recal_data_t *recal_data_p = (recal_data_t *)params;
 
@@ -105,8 +105,8 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 
     switch (recal_data_p->calib_method) {
     case CALIB_FTICR: {
-        double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
+        double a = gsl_vector_get (x, 1);
+        double b = gsl_vector_get (x, 0);
         double mz_calib;
         double freq;
 
@@ -122,8 +122,8 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         calib_f_poly_n(x, recal_data_p, f, 2);
         break;
     case CALIB_ORBITRAP: {
-        double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
+        double a = gsl_vector_get (x, 1);
+        double b = gsl_vector_get (x, 0);
         double mz_calib;
         double freq;
         double x;
@@ -165,7 +165,7 @@ int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
 }
 
 // DF calibrator
-int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
+static int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 {
     recal_data_t *recal_data_p = (recal_data_t *)params;
 
@@ -176,8 +176,8 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 
     switch (recal_data_p->calib_method) {
     case CALIB_FTICR: {
-        double a = gsl_vector_get (x, 0);
-        double b = gsl_vector_get (x, 1);
+        double a = gsl_vector_get (x, 1);
+        double b = gsl_vector_get (x, 0);
         double freq;
 
         for (i=0;i<n_calibrants;i++) {
@@ -197,8 +197,8 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
         break;
     case CALIB_ORBITRAP:
         for (i=0;i<n_calibrants;i++) {
-            double a = gsl_vector_get (x, 0);
-            double b = gsl_vector_get (x, 1);
+            double a = gsl_vector_get (x, 1);
+            double b = gsl_vector_get (x, 0);
             double freq;
 
             for (i=0;i<n_calibrants;i++) {
@@ -276,7 +276,7 @@ int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 }
 
 // FDF Calibrator
-int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
+static int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
 {
      int rv = calib_f(x, params, f);
      if (rv == GSL_SUCCESS) {
@@ -285,7 +285,38 @@ int calib_fdf(const gsl_vector *x, void *params, gsl_vector *f, gsl_matrix *J)
      return rv;
 }
 
-void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
+int get_nr_cal_pars(calib_method_t calib_method) {
+  int nr_cal_pars=0;
+  switch (calib_method) {
+  case CALIB_FTICR:
+      nr_cal_pars = 2;
+      break;
+  case CALIB_TOF:
+      nr_cal_pars = 3;
+      break;
+  case CALIB_ORBITRAP:
+      nr_cal_pars = 2;
+      break;
+  case CALIB_POLY1:
+      nr_cal_pars = 2;
+      break;
+  case CALIB_POLY2:
+      nr_cal_pars = 3;
+      break;
+  case CALIB_POLY3:
+      nr_cal_pars = 4;
+      break;
+  case CALIB_POLY4:
+      nr_cal_pars = 5;
+      break;
+  case CALIB_POLY5:
+      nr_cal_pars = 6;
+      break;
+  }
+  return nr_cal_pars;
+}
+
+static void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
     int i;
 
     cal_params->calib_method = calib_method;
@@ -294,43 +325,8 @@ void init_cal_params(cal_params_t *cal_params, calib_method_t calib_method) {
     for (i=0; i<MAX_CAL_PARS; i++) {
         cal_params->cal_pars[i] = 0.0;
     }
-    switch (calib_method) {
-    case CALIB_FTICR:
-        cal_params->cal_pars[0] = 1.0;
-        cal_params->nr_cal_pars = 2;
-        break;
-    case CALIB_TOF:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 3;
-        break;
-    case CALIB_ORBITRAP:
-        cal_params->cal_pars[0] = 1.0;
-        cal_params->nr_cal_pars = 2;
-        break;
-    case CALIB_POLY1:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 2;
-        break;
-    case CALIB_POLY2:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 3;
-        break;
-    case CALIB_POLY3:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 4;
-        break;
-    case CALIB_POLY4:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 5;
-        break;
-    case CALIB_POLY5:
-        cal_params->cal_pars[1] = 1.0;
-        cal_params->nr_cal_pars = 6;
-        break;
-    default:
-        cal_params->nr_cal_pars = 0;
-    break;
-    }
+    cal_params->cal_pars[1] = 1.0;
+    cal_params->nr_cal_pars = get_nr_cal_pars(calib_method);
 }
 
 cal_params_t recalibratePeaks(recal_data_t *d,
