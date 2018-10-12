@@ -38,6 +38,7 @@ typedef struct {
     calibrant_t *  calibrants;
 } recal_data_t;
 
+int get_nr_cal_pars(calib_method_t calib_method);
 double mz_recalX(double mz_meas, cal_params_t *p);
 cal_params_t recalibratePeaks(recal_data_t *d,
                               int min_cal,
@@ -46,5 +47,4 @@ cal_params_t recalibratePeaks(recal_data_t *d,
 void fill_calibrant_list(calibrant_t *calibrant_list, int i,
                          double mz_calc, double mz_measured);
 int get_calibrant_id(calibrant_t *calibrant_list, int i);
-
 #endif

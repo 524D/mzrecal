@@ -65,3 +65,7 @@ func mzRecal(mz float64, recalPar *C.cal_params_t) float64 {
 	mzNew := float64(C.mz_recalX(C.double(mz), recalPar))
 	return mzNew
 }
+
+func getNrCalPars(recalMethod int) int {
+	return int(C.get_nr_cal_pars(C.calib_method_t(recalMethod)))
+}

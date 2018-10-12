@@ -464,6 +464,16 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 	if err != nil {
 		return recal, err
 	}
+	// Update the minimum number of calibrants
+	// according to the calibration method
+	nrCalPars := getNrCalPars(recalMethod)
+	if *par.minCal == 0 {
+		*par.minCal = nrCalPars + 1
+	} else {
+		if *par.minCal < nrCalPars {
+			*par.minCal = nrCalPars
+		}
+	}
 
 	numSpecs := mzML.NumSpecs()
 
@@ -916,10 +926,10 @@ func main() {
 	par.recalMethod = flag.String("func",
 		"",
 		`recalibration function to apply. If empty, a suitable
-	function is determined from the instrument specified in the mzML file.
-	Valid function names:
-  	FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-	  POLY<N>: Polynomial with degee <N> (range 1:5)`)
+function is determined from the instrument specified in the mzML file.
+Valid function names:
+    FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
+    POLY<N>: Polynomial with degee <N> (range 1:5)`)
 	par.recal = flag.Bool("recal", false,
 		`Switch between computation of recalibration parameters (default) and actual
 	recalibration`)
@@ -933,8 +943,12 @@ func main() {
 		"",
 		"filename for output of computed calibration parameters\n")
 	par.minCal = flag.Int("mincals",
-		3,
-		"minimum number of calibrants a spectrum should have to be recalibrated\n")
+		0,
+		`minimum number of calibrants a spectrum should have to be recalibrated.
+If 0, the minimum number of calibrants is set to the smallest number needed
+for the choosen recalibration function plus one. In any other case, is the
+specified number is too low for the calibration function, it is increased to
+the minimum needed value.`)
 	par.minPeak = flag.Float64("minPeak",
 		10000,
 		"minimum intensity of peaks to be considered for recalibrating\n")
