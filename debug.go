@@ -62,7 +62,7 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 						mzRecalRelSum += mzRecalRel
 						mzRecalRelCount++
 					}
-					fmt.Printf(" mzComp:%f(%0.2f%%) mzRecal:%f(%0.2f%%) cal:%s rtShift:%f(%0.2f%%) charge:%d used: %s",
+					fmt.Printf(" mzCalc:%f(%0.2f%%) mzRecal:%f(%0.2f%%) cal:%s rtShift:%f(%0.2f%%) charge:%d used: %s",
 						mzMatchingCals[k].mz, mzRel,
 						mzRecal, mzRecalRel,
 						mzMatchingCals[k].cal.name,
