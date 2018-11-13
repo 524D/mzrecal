@@ -56,25 +56,26 @@ const (
 
 // Command line parameters
 type params struct {
-	recal             *bool // Compute recal parmeters (false) or recalibrate (true)
-	mzMLFilename      *string
-	mzMLRecalFilename *string
-	mzIdentMlFilename *string
-	calFilename       *string  // Filename where JSON calibration parameters will be written
-	minCal            *int     // minimum number of calibrants a spectrum should have to be recalibrated
-	minPeak           *float64 // minimum intensity of peaks to be considered for recalibrating
-	rtWindow          *string  // retention time window
-	lowRT             float64  // lower rt window boundary
-	upRT              float64  // upper rt window boundary
-	mzErrPPM          *float64 // max mz error for trying a calibrant in calibrant
-	mzTargetPPM       *float64 // max mz error for accepting a calibrant in calibration
-	recalMethod       *string  // Recal method as specfied by user
-	scoreFilter       *string  // PSM score filter to apply
-	charge            *string  // Charge range for calibrants
-	useIdentCharge    bool     // Use only chage as found in identification
-	minCharge         int      // min m/z for calibrants
-	maxCharge         int      // max m/z for calibrants
-	args              []string // Addtional values passed on the command line
+	recal              *bool // Compute recal parmeters (false) or recalibrate (true)
+	mzMLFilename       *string
+	mzMLRecalFilename  *string
+	mzIdentMlFilename  *string
+	calFilename        *string  // Filename where JSON calibration parameters will be written
+	emptyNonCalibrated *bool    // Empty MS2 spectra for which the precursor was not recalibrated
+	minCal             *int     // minimum number of calibrants a spectrum should have to be recalibrated
+	minPeak            *float64 // minimum intensity of peaks to be considered for recalibrating
+	rtWindow           *string  // retention time window
+	lowRT              float64  // lower rt window boundary
+	upRT               float64  // upper rt window boundary
+	mzErrPPM           *float64 // max mz error for trying a calibrant in calibrant
+	mzTargetPPM        *float64 // max mz error for accepting a calibrant in calibration
+	recalMethod        *string  // Recal method as specfied by user
+	scoreFilter        *string  // PSM score filter to apply
+	charge             *string  // Charge range for calibrants
+	useIdentCharge     bool     // Use only chage as found in identification
+	minCharge          int      // min m/z for calibrants
+	maxCharge          int      // max m/z for calibrants
+	args               []string // Addtional values passed on the command line
 }
 
 type calibrant struct {
@@ -645,7 +646,7 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	return scoreFilt, nil
 }
 
-func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
+func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 
 	var precursorsUpdated, precursorsTotal int
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
@@ -702,6 +703,12 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams) error {
 							}
 						}
 					}
+				} else {
+					if *par.emptyNonCalibrated {
+						// Empty the spectrum
+						var peaks []mzml.Peak
+						mzML.UpdateScan(i, peaks, true, true)
+					}
 				}
 			}
 		}
@@ -757,7 +764,7 @@ func doRecal(par params) {
 
 	mzML.AppendSoftwareInfo(progName, progVersion)
 
-	err = updatePrecursorMz(mzML, recal)
+	err = updatePrecursorMz(mzML, recal, par)
 	if err != nil {
 		log.Fatalf("updatePrecursorMz: %v", err)
 	}
@@ -899,7 +906,7 @@ BUILD-IN CALIBRANTS:
 `, progName)
 
 	for _, cal := range fixedCalibrants {
-		fmt.Printf("     %s (%f)\n", cal.name, cal.mass)
+		fmt.Fprintf(os.Stderr, "     %s (%f)\n", cal.name, cal.mass)
 	}
 
 	fmt.Fprintf(os.Stderr,
@@ -942,6 +949,8 @@ Valid function names:
 	par.calFilename = flag.String("cal",
 		"",
 		"filename for output of computed calibration parameters\n")
+	par.emptyNonCalibrated = flag.Bool("empty-non-calibrated", false,
+		`Empty MS2 spectra for which the precursor was not recalibrated.`)
 	par.minCal = flag.Int("mincals",
 		0,
 		`minimum number of calibrants a spectrum should have to be recalibrated.

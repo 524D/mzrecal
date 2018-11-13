@@ -19,7 +19,7 @@ func (f *MzML) Write(writer io.Writer) error {
 	// GO's Encode doesn't always insert newlines, and using
 	// Indent only works if the indent string is not empty,
 	// resuling in a single space indent.
-	enc.Indent(` `, ``)
+	enc.Indent(` `, `  `)
 	var content mzMLContentWrite
 
 	content.XMLName = f.content.XMLName
@@ -54,6 +54,13 @@ func (f *MzML) UpdateScan(scanIndex int, p []Peak,
 	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
 		return ErrInvalidScanIndex
 	}
+	// Workaround for msConvert:
+	// Insert a dummy peak if there is none, otherwise msConvert generates an error
+	if len(p) == 0 {
+		var peak Peak
+		p = append(p, peak)
+	}
+
 	f.content.Run.SpectrumList.Spectrum[scanIndex].DefaultArrayLength = int64(len(p))
 	for i := range f.content.Run.SpectrumList.Spectrum[scanIndex].BinaryDataArrayList.BinaryDataArray {
 		zlibCompression, bits64, mzArray, intensityArray, err :=
@@ -116,7 +123,7 @@ func encodeBinary(p []Peak, zlibCompression bool, bits64 bool, mzArray bool) (
 		z := zlib.NewWriter(&b)
 		defer z.Close()
 		z.Write(rawUncompressed)
-		z.Close()
+		z.Close() // zlib writer must explicitly be closed here, otherwise resu is invalid
 		data = b.Bytes()
 	} else {
 		data = rawUncompressed

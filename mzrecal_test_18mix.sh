@@ -28,16 +28,16 @@ echo "Input file ${DATA_DIR}/${FN_BASE}.mzML"
 echo -n "Running comet "
 $T "${TOOLS_DIR}/comet.2018012.linux.exe" "-D${DATA_DIR}/${FASTA}" "-P${TOOLS_DIR}/comet.params" "${DATA_DIR}/${FN_BASE}.mzML" >/dev/null
 
-echo "Converting to .pep.xml "
+echo "Converting to .mzid "
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}.pep.xml" >/dev/null 2>/dev/null
 
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
 echo -n "Computing recalibration "
-$T "${TARGET_DIR}/mzrecal" -mzTry 12 -mzAccept=4 -scoreFilter="MS:1002257(0.0:0.05)" "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TARGET_DIR}/mzrecal" -mzTry=10 -mzAccept=3 -scoreFilter="MS:1002257(0.0:0.05)" "${DATA_DIR}/${FN_BASE}.mzML"
 echo -n "Creating recalibrated output "
-$T "${TARGET_DIR}/mzrecal" -recal "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TARGET_DIR}/mzrecal" -recal -empty-non-calibrated "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running msconvert (generating indexed mzml) "
 $T "${TOOLS_DIR}/msconvert" "${DATA_DIR}/${FN_BASE}-recal.mzML" --outfile "${FN_BASE}-recal.indexed.mzML" -o "${DATA_DIR}"  >/dev/null
@@ -78,6 +78,6 @@ echo -n "Running peptide prophet (xinteract) on uncalibrated files ${XINTERACT_F
 $T "${TOOLS_DIR}/xinteract" -Ninteract.pep.xml -p0.05 -l7 -PPM -O ${XINTERACT_FILES_UNCALIBRATED}
 echo -n "Running peptide prophet (xinteract) on calibrated files ${XINTERACT_FILES_CALIBRATED}"
 $T "${TOOLS_DIR}/xinteract" -Ninteract-recal.pep.xml -p0.05 -l7 -PPM -O ${XINTERACT_FILES_CALIBRATED}
-echo -n "Running peptide prophet (xinteract) on calibrated^2 files ${XINTERACT_FILES_CALIBRATED2}"
-$T "${TOOLS_DIR}/xinteract" -Ninteract-recal-recal.pep.xml -p0.05 -l7 -PPM -O ${XINTERACT_FILES_CALIBRATED2}
+# echo -n "Running peptide prophet (xinteract) on calibrated^2 files ${XINTERACT_FILES_CALIBRATED2}"
+# $T "${TOOLS_DIR}/xinteract" -Ninteract-recal-recal.pep.xml -p0.05 -l7 -PPM -O ${XINTERACT_FILES_CALIBRATED2}
 cd "${THISDIR}"
