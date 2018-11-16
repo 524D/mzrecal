@@ -1,4 +1,45 @@
-# USAGE
+# Aim of the program
+mzrecal can be used to recalibrate mass spectrometry data in mzML format.
+
+# Compiling
+The core of the program is written in [Go](https://golang.org/). A relatively
+small part is written in the C language, this is required to access the GSL
+library which is used to compute the recalibration parameters.
+
+On Ubuntu 18.04, the prerequisites can be installed with:
+
+```
+sudo apt install golang gcc libgsl-dev docker
+```
+
+The code can be build by running the script build.sh. This compiles the program
+and also builds a Docker image.
+
+
+# Input and output
+mzrecal uses file formates specified by the Proteomics Standards Initiative 
+(PSI), notably [mzML](http://www.psidev.info/mzML) and [mzIdentML](http://www.psidev.info/mzidentml).
+
+To compute recalibration parameters, a peak-picked mzML file and corresponding
+mzIdentML (file extension .mzid) file are needed as input. From this, a .json
+file is produced containing parameters for recalibration.
+
+For the actual recalibration, the .json files from the first step plus the
+mzML file are used, and a recalibrated mzML file is produced.
+
+Note that the output mzML file will not contain the index wrapper
+(optional accorsing to the mzML specification, but still required by some
+software). The msconvert program from the ProteoWizard toolkit is recommended
+to add the index.
+
+# Go libraries for mzML and mzIdentML
+The current version of the code embeds 2 Go packages, for reading mzIdentML
+and for reading/writing mzML files. These packages will likely be split into a
+separate library at a later time.
+
+# Usage
+
+The following is printed by running mzrecal -help
 
 ```
   mzrecal [options] <mzMLfile>
