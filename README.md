@@ -146,3 +146,9 @@ USAGE EXAMPLES:
      Read BSA.mzML and BSA-recal.json, write recalibrated output to
      BSA-recal.mzML
 ```
+
+# Acknowledgements
+The recalibration method was developed by Magnus Palmblad (see also the
+[recal2](http://www.ms-utils.org/recal2.html)).
+Parts of the C code is obtained from msrecal, which has the same objective
+as mzrecal and was written by Tugce Arzu Guler.
