@@ -13,9 +13,14 @@ sudo apt install golang gcc libgsl-dev
 go get golang.org/x/net/html/charset
 ```
 
-The code can be build by running the script build.sh. The script
-build-docker.sh will a Docker image.
+To build the code:
+```
+go build -a -ldflags '-extldflags "-static"' -o mzrecal
+```
 
+A Docker image can be build by running the script build-docker.sh
+A Makefile and several test scripts are present to test the performance of
+mzrecal.
 
 # Input and output
 mzrecal uses file formats specified by the Proteomics Standards Initiative 
