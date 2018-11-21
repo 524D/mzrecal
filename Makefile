@@ -1,3 +1,15 @@
+# This makefile is used to test mzrecal on a set of files
+# It performs the following steps:
+# Identify peptides (using comet)
+# Convert .pep.XML into .mzid (using idconvert)
+# Compute recalibration parameters (using mzrecal)
+# Recalibrate (using mzrecal)
+# Add index to mzML file (using msconvert)
+# Identify peptides in recalibrated files (using comet)
+# Combine results from multiple files, both before and after recalibration
+#  (using peptide prophet/xinteract)
+# Display a histogram of ms2 precursor mass errors before and
+#  after recalibration
 DATA_DIR=$(shell pwd)
 DATA_BASE=$(shell basename $(DATA_DIR))
 RESULT_DIR=$(HOME)/results/$(DATA_BASE)
