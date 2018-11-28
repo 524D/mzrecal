@@ -11,14 +11,15 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"mzrecal/mzidentml"
-	"mzrecal/mzml"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"mzrecal/mzidentml"
+	"mzrecal/mzml"
 )
 
 // Program name and version, appended to software list in mzML output
@@ -988,8 +989,14 @@ MS:1002466 (PeptideShaker PSM score)
 		`charge range of calibrants, or the string "ident". If set to "ident",
 only the charge as found in the mzIdentMl file will be used for calibration.
 `)
+	version := flag.Bool("version", false,
+		`Show software version`)
 	flag.Usage = usage
 	flag.Parse()
+	if *version {
+		fmt.Fprintf(os.Stderr, "%s version %s\n", progName, progVersion)
+		return
+	}
 	par.args = flag.Args()
 	sanatizeParams(&par)
 	if *par.recal {
