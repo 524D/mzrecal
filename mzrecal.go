@@ -11,15 +11,14 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"mzrecal/mzidentml"
+	"mzrecal/mzml"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-
-	"mzrecal/mzidentml"
-	"mzrecal/mzml"
 )
 
 // Program name and version, appended to software list in mzML output
@@ -422,7 +421,9 @@ func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
 			return calibOrbitrap, `Orbitrap`, nil
 		}
 	}
-	return calibNone, `NONE`, nil
+	// FIXME: Implement other instruments
+	log.Println("WARNING: No recalibration method for instrument, using POLY2 recalibration")
+	return calibPoly2, `POLY2`, nil
 }
 
 func recalMethodStr2Int(recalMethodStr string) (int, error) {
@@ -516,7 +517,7 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 
 			peaks, err := mzML.ReadScan(i)
 			if err != nil {
-				log.Fatalf("recalibrateSpec ReadScan failed for spectrum %d: %v",
+				log.Fatalf("computeRecal ReadScan failed for spectrum %d: %v",
 					i, err)
 			}
 			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
@@ -524,7 +525,7 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
 				mzMatchingCals, par)
 			if err != nil {
-				log.Printf("recalibrateSpec calibration failed for spectrum %d: %v",
+				log.Printf("computeRecal calibration failed for spectrum %d: %v",
 					i, err)
 			}
 			specRecalPar.CalsInRTWindow = len(mzCalibrants)
