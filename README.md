@@ -38,6 +38,59 @@ Note that the output mzML file will not contain the index wrapper
 some software). The msconvert program from the ProteoWizard toolkit is
 recommended to add the index.
 
+The sample below shows the start, middle and end of a .json file with
+recalibration parameters.
+
+```json
+{
+  "MzRecalVersion": "1.0",
+  "RecalMethod": "Orbitrap",
+  "SpecRecalPar": [
+    {
+      "SpecIndex": 0,
+      "P": null,
+      "CalsInRTWindow": 7,
+      "CalsInMassWindow": 0,
+      "CalsUsed": 0
+    },
+
+    {
+      "SpecIndex": 2135,
+      "P": [
+        9.673208098942699e-8,
+        1.000000105563597
+      ],
+      "CalsInRTWindow": 42,
+      "CalsInMassWindow": 16,
+      "CalsUsed": 14
+    },
+
+    {
+      "SpecIndex": 8856,
+      "P": [
+        8.562906413578675e-8,
+        1.0000000197806953
+      ],
+      "CalsInRTWindow": 7,
+      "CalsInMassWindow": 4,
+      "CalsUsed": 4
+    }
+  ]
+}
+
+```
+
+
+# Results
+Recalibration affects the MS1 spectra as well as the precursor masses of the
+MS2 spectra. Search engines commonly report the difference between theoretical
+mass and measured mass for identified peptides. The picture below shows a
+histogram of these mass differences, both before and after recalibration.
+Note that the number of identified peptides is lower for the recalibrated 
+result. The reason is that we used the option -empty-non-calibrated, causing
+MS2 spectra for which the precursor could not be recalibrated to be dropped.
+![alt text](https://git.lumc.nl/cpm/mzrecal/ppmerr.svg "Precursor mass error before and after recalibration.")
+
 # Go libraries for mzML and mzIdentML
 The current version of the code embeds 2 Go packages, for reading mzIdentML
 and for reading/writing mzML files. These packages will likely be split into a
