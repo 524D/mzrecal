@@ -89,12 +89,12 @@ histogram of these mass differences, both before and after recalibration.
 Note that the number of identified peptides is lower for the recalibrated 
 result. The reason is that we used the option -empty-non-calibrated, causing
 MS2 spectra for which the precursor could not be recalibrated to be dropped.
-![ppm-histogram](./ppmerr.svg)
+![ppm-histogram](./ppmerr.png)
 
 # Go libraries for mzML and mzIdentML
-The current version of the code embeds 2 Go packages, for reading mzIdentML
-and for reading/writing mzML files. These packages will likely be split into a
-separate library at a later time.
+The current version of the code embeds two Go packages, one for reading
+mzIdentML and one for reading/writing mzML files. These packages will likely
+be split into a separate library at a later time.
 
 # Usage
 
