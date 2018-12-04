@@ -1,6 +1,8 @@
 # Aim of the program
 mzrecal can be used to recalibrate mass spectrometry data in mzML format.
 
+Check section [Usage](#usage) for a more complete description.
+
 # Compiling
 The core of the program is written in [Go](https://golang.org/). A relatively
 small part is written in the C language, this is required to access the GSL
@@ -19,6 +21,7 @@ go build -a -ldflags '-extldflags "-static"' -o mzrecal
 ```
 
 A Docker image can be build by running the script build-docker.sh
+
 A Makefile and several test scripts are present to test the performance of
 mzrecal.
 
@@ -96,7 +99,7 @@ The current version of the code embeds two Go packages, one for reading
 mzIdentML and one for reading/writing mzML files. These packages will likely
 be split into a separate library at a later time.
 
-# Usage
+# <a name="usage"></a>Usage
 
 The following is printed by running mzrecal -help
 
