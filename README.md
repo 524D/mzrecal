@@ -328,6 +328,6 @@ USAGE EXAMPLES:
 ```
 
 # Acknowledgements
-The recalibration algotithm was originally developed by Magnus Palmblad (see also 
+The recalibration algorithm was originally developed by Magnus Palmblad (see also 
 [recal2](http://www.ms-utils.org/recal2.html)).
 
