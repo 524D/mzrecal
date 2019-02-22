@@ -18,7 +18,7 @@ import (
 )
 
 func recalibrateSpec(specIndex int, recalMethod int,
-	mzCalibrants []mzCalibrant, par params) (
+	mzCalibrants []calibrant, par params) (
 	specRecalParams, []int, error) {
 	var specRecalPar specRecalParams
 

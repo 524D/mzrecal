@@ -78,12 +78,27 @@ type params struct {
 	args               []string // Addtional values passed on the command line
 }
 
-type calibrant struct {
+// Calibrant as read from mzid file (or build in), with uncharged mass
+type identifiedCalibrant struct {
 	name          string
 	mass          float64 // Uncharged mass
 	retentionTime float64
-	charge        int
-	singleCharged bool
+	idCharge      int  // Charge state at identification
+	singleCharged bool // true if only charge state 1 should be considered
+}
+
+// m/z value for calibrant
+type chargedCalibrant struct {
+	idCal  *identifiedCalibrant
+	charge int     // assumed charge for finding m/z peak
+	mz     float64 // m/z value, computed from unchaged mass and charge
+}
+
+// Calibrants with same m/z
+type calibrant struct {
+	chargedCals []chargedCalibrant
+	mz          float64 // computed mz of the calibrant (copy of chargedCals[0])
+	mzMeasured  float64 // mz of the best candidate peak
 }
 
 // recalParams contains recalibration parameters for each spectrum,
@@ -108,13 +123,6 @@ type specRecalParams struct {
 	CalsUsed         int
 }
 
-type mzCalibrant struct {
-	mz         float64    // computed mz of the calibrant
-	mzMeasured float64    // mz of the best candidate peak
-	cal        *calibrant // Only used for verbose output
-	charge     int        // Only used for verbose output
-}
-
 type scoreRange struct {
 	minScore float64 // Minimum score to accept
 	maxScore float64 // Maximum score to accept
@@ -123,56 +131,56 @@ type scoreRange struct {
 
 type scoreFilter map[string]scoreRange
 
-var fixedCalibrants = []calibrant{
+var fixedCalibrants = []identifiedCalibrant{
 
 	// cyclosiloxanes, H6nC2nOnSin
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane6`,
 		mass:          444.1127481,
 		retentionTime: -math.MaxFloat64, // Indicates any retention time
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane7`,
 		mass:          518.1315394,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane8`,
 		mass:          592.1503308,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane9`,
 		mass:          666.1691221,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane10`,
 		mass:          740.1879134,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane11`,
 		mass:          814.2067048,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
-	calibrant{
+	identifiedCalibrant{
 		name:          `cyclosiloxane12`,
 		mass:          888.2254961,
 		retentionTime: -math.MaxFloat64,
-		charge:        1,
+		idCharge:      1,
 		singleCharged: true,
 	},
 }
@@ -205,13 +213,13 @@ var aaMass = map[rune]float64{
 
 // The following are needed for sorting []calibrant on mass and retentionTime
 // the mass field.
-type byMass []calibrant
+type byMz []chargedCalibrant
 
-func (a byMass) Len() int           { return len(a) }
-func (a byMass) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byMass) Less(i, j int) bool { return a[i].mass < a[j].mass }
+func (a byMz) Len() int           { return len(a) }
+func (a byMz) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byMz) Less(i, j int) bool { return a[i].mz < a[j].mz }
 
-type byRetention []calibrant
+type byRetention []identifiedCalibrant
 
 func (a byRetention) Len() int           { return len(a) }
 func (a byRetention) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -302,9 +310,9 @@ func pepMass(pepSeq string) (float64, error) {
 // - computes the mass of the lightest isotope
 // - get the retention name, retentionTime, spectrum
 func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
-	par params) ([]calibrant, error) {
+	par params) ([]identifiedCalibrant, error) {
 	// Create slice for the number of calibrants that we expect to have
-	cals := make([]calibrant, 0, mzIdentML.NumIdents()+len(fixedCalibrants))
+	cals := make([]identifiedCalibrant, 0, mzIdentML.NumIdents()+len(fixedCalibrants))
 	for i := 0; i < mzIdentML.NumIdents(); i++ {
 		ident, err := mzIdentML.Ident(i)
 		if err != nil {
@@ -331,12 +339,12 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 			}
 		}
 		if scoreOK {
-			var cal calibrant
+			var cal identifiedCalibrant
 			m, err := pepMass(ident.PepSeq)
 			if err == nil { // Skip if mass cannot be computed
 				cal.name = ident.PepID
 				cal.retentionTime = ident.RetentionTime
-				cal.charge = ident.Charge
+				cal.idCharge = ident.Charge
 				cal.singleCharged = false
 				cal.mass = m + ident.ModMass
 				cals = append(cals, cal)
@@ -355,7 +363,7 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 	return cals, nil
 }
 
-func calibsInRtWindows(rtMin, rtMax float64, allCals []calibrant) ([]calibrant, error) {
+func calibsInRtWindows(rtMin, rtMax float64, allCals []identifiedCalibrant) ([]identifiedCalibrant, error) {
 
 	// Find the indexes of the calibrants within the retention time window
 	i1 := sort.Search(len(allCals), func(i int) bool { return allCals[i].retentionTime >= rtMin })
@@ -366,45 +374,49 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []calibrant) ([]calibrant, 
 	// start of the list of calibrants. Thus, to search them, we simply
 	// search from the start for calibrants with elution time -math.MaxFloat64
 	var i3 int
-	for i3 = 0; allCals[i3].retentionTime == -math.MaxFloat64; i3++ {
+	for i3 = 0; i3 < len(allCals) && allCals[i3].retentionTime == -math.MaxFloat64; i3++ {
 	}
 
-	var cals = make([]calibrant, 0, (i2-i1)+i3)
+	var cals = make([]identifiedCalibrant, 0, (i2-i1)+i3)
 	cals = append(cals, allCals[i1:i2]...)
 	cals = append(cals, allCals[0:i3]...)
 
 	return cals, nil
 }
 
-// mergeSameMassCals merges all calibrants that have the same mass or
-// nearly the same mass. The mass of the first calibrant that was encountered
-// is retained, while the names of the other calibrants are appended
-// to the final calibrant name.
-func mergeSameMassCals(cals []calibrant) []calibrant {
-	mcals := make([]calibrant, 0, len(cals))
+// mergeSameMzCals merges all calibrants that have the same m/z or
+// nearly the same m/z. The m/z of the first calibrant that was encountered
+// is retained. The list of calibrants with their chargestate is appended
+// to the final list of calibrants.
+func mergeSameMzCals(chargedCalibrants []chargedCalibrant) []calibrant {
+	mcals := make([]calibrant, 0, len(chargedCalibrants))
 	// sort calibrants by mass
-	sort.Sort(byMass(cals))
+	sort.Sort(byMz(chargedCalibrants))
 
-	prevMass := float64(-1)
-	for _, cal := range cals {
-		if math.Abs(cal.mass-prevMass) < mergeMzTol {
-			mcals[len(mcals)-1].name += `;` + cal.name
+	prevMz := float64(-1)
+	for _, cal := range chargedCalibrants {
+		if math.Abs(cal.mz-prevMz) < mergeMzTol {
+			mcals[len(mcals)-1].chargedCals = append(mcals[len(mcals)-1].chargedCals, cal)
 		} else {
-			mcals = append(mcals, cal)
+			var newCal calibrant
+			newCal.chargedCals = make([]chargedCalibrant, 1)
+			newCal.chargedCals[0] = cal
+			newCal.mz = cal.mz
+			mcals = append(mcals, newCal)
+			prevMz = cal.mz
 		}
-		prevMass = cal.mass
 	}
 	return mcals
 }
 
-func newMzCalibrant(charge int, cal *calibrant) mzCalibrant {
-	var mzCal mzCalibrant
+func newChargedCalibrant(charge int, idCal *identifiedCalibrant) chargedCalibrant {
+	var chargedCal chargedCalibrant
 
 	fCharge := float64(charge)
-	mzCal.mz = (cal.mass + fCharge*protonMass) / fCharge
-	mzCal.cal = cal
-	mzCal.charge = charge
-	return mzCal
+	chargedCal.mz = (idCal.mass + fCharge*protonMass) / fCharge
+	chargedCal.idCal = idCal
+	chargedCal.charge = charge
+	return chargedCal
 }
 
 func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
@@ -452,7 +464,7 @@ func recalMethodStr2Int(recalMethodStr string) (int, error) {
 	return recalMethod, nil
 }
 
-func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, error) {
+func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
 	var recalMethod int
@@ -490,50 +502,50 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 			if err != nil {
 				return recal, err
 			}
-			wCals, err := calibsInRtWindows(retentionTime+par.lowRT,
-				retentionTime+par.upRT, cals)
+			specCals, err := calibsInRtWindows(retentionTime+par.lowRT,
+				retentionTime+par.upRT, idCals)
 			if err != nil {
 				return recal, err
 			}
-			specCals := mergeSameMassCals(wCals)
 
 			// Make slice with mz values for all calibrants
 			// For efficiency, pre-allocate (more than) enough elements
-			mzCalibrants := make([]mzCalibrant, 0,
-				len(specCals)*(par.maxCharge-par.minCharge))
+			chargedCalibrants := make([]chargedCalibrant, 0,
+				len(specCals)*(par.maxCharge-par.minCharge+1))
 			for j, cal := range specCals {
 				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
 				if cal.singleCharged {
-					mzCalibrants = append(mzCalibrants, newMzCalibrant(1, &specCals[j]))
+					chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(1, &specCals[j]))
 				} else {
 					if par.useIdentCharge {
-						mzCalibrants = append(mzCalibrants, newMzCalibrant(cal.charge, &specCals[j]))
+						chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(cal.idCharge, &specCals[j]))
 					} else {
 						for charge := par.minCharge; charge <= par.maxCharge; charge++ {
-							mzCalibrants = append(mzCalibrants, newMzCalibrant(charge, &specCals[j]))
+							chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(charge, &specCals[j]))
 						}
 					}
 				}
 			}
+			calibrants := mergeSameMzCals(chargedCalibrants)
 
 			peaks, err := mzML.ReadScan(i)
 			if err != nil {
 				log.Fatalf("computeRecal ReadScan failed for spectrum %d: %v",
 					i, err)
 			}
-			mzMatchingCals := mzCalibrantsMatchPeaks(peaks, mzCalibrants, par)
+			matchingCals := calibrantsMatchPeaks(peaks, calibrants, par)
 
 			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
-				mzMatchingCals, par)
+				matchingCals, par)
 			if err != nil {
 				log.Printf("computeRecal calibration failed for spectrum %d: %v",
 					i, err)
 			}
-			specRecalPar.CalsInRTWindow = len(mzCalibrants)
-			specRecalPar.CalsInMassWindow = len(mzMatchingCals)
+			specRecalPar.CalsInRTWindow = len(calibrants)
+			specRecalPar.CalsInMassWindow = len(matchingCals)
 			specRecalPar.CalsUsed = len(calibrantsUsed)
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
-			debugLogSpecs(i, numSpecs, retentionTime, peaks, mzMatchingCals, par,
+			debugLogSpecs(i, numSpecs, retentionTime, peaks, matchingCals, par,
 				calibrantsUsed, recalMethod, specRecalPar)
 
 			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
@@ -543,8 +555,9 @@ func computeRecal(mzML *mzml.MzML, cals []calibrant, par params) (recalParams, e
 	return recal, nil
 }
 
-func mzCalibrantsMatchPeaks(peaks []mzml.Peak, mzCalibrants []mzCalibrant, par params) []mzCalibrant {
-	mzMatchingCals := make([]mzCalibrant, 0, len(mzCalibrants))
+func calibrantsMatchPeaks(peaks []mzml.Peak, calibrants []calibrant,
+	par params) []calibrant {
+	matchingCals := make([]calibrant, 0, len(calibrants))
 
 	// For each potental calibrant, find highest peak within mz window
 
@@ -552,16 +565,16 @@ func mzCalibrantsMatchPeaks(peaks []mzml.Peak, mzCalibrants []mzCalibrant, par p
 	// by the schema/mzML description. Therefore, we must sort them now.
 	sort.Sort(peaksByMass(peaks))
 
-	for _, mzCalibrant := range mzCalibrants {
-		mz := mzCalibrant.mz
+	for _, calibrant := range calibrants {
+		mz := calibrant.mz
 		mzErr := *par.mzErrPPM * mz / 1000000.0
 		peak := maxPeakInMzWindow(mz-mzErr, mz+mzErr, peaks)
 		if peak.Intens > *par.minPeak {
-			mzCalibrant.mzMeasured = peak.Mz
-			mzMatchingCals = append(mzMatchingCals, mzCalibrant)
+			calibrant.mzMeasured = peak.Mz
+			matchingCals = append(matchingCals, calibrant)
 		}
 	}
-	return mzMatchingCals
+	return matchingCals
 }
 
 // maxPeakInMzWindow returns the highest intensity peak in a given mz window.
@@ -792,7 +805,7 @@ func makeRecalCoefficients(par params) {
 	if err != nil {
 		log.Fatalf("mzidentml.Read: error return %v", err)
 	}
-	cals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
+	idCals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
 	if err != nil {
 		log.Fatal("makeCalibrantList failed")
 	}
@@ -807,7 +820,7 @@ func makeRecalCoefficients(par params) {
 		log.Fatalf("mzml.Read: error return %v", err)
 	}
 
-	recal, err := computeRecal(&mzML, cals, par)
+	recal, err := computeRecal(&mzML, idCals, par)
 	if err != nil {
 		log.Fatalf("computeRecal: error return %v", err)
 	}
