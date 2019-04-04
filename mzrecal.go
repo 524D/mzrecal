@@ -798,7 +798,7 @@ func makeRecalCoefficients(par params) {
 
 	f1, err := os.Open(*par.mzIdentMlFilename)
 	if err != nil {
-		log.Fatalf("Open %s: mzIdentMLfile %v", *par.mzIdentMlFilename, err)
+		log.Fatalln(err.Error())
 	}
 	defer f1.Close()
 	mzIdentML, err := mzidentml.Read(f1)
