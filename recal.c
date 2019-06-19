@@ -41,11 +41,11 @@ double mz_recalX(double mz_meas, cal_params_t *p)
         double a = p->cal_pars[1];
         double b = p->cal_pars[0];
         double freq;
-        double x;
+        double fb;
 
         freq = 1/sqrt(mz_meas);
-        x = freq - b;
-        mz_calib = a/(x*x);
+        fb = freq - b;
+        mz_calib = a/(fb*fb);
         }
         break;
     case CALIB_POLY1:
@@ -126,18 +126,18 @@ static int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         double b = gsl_vector_get (x, 0);
         double mz_calib;
         double freq;
-        double x;
+        double fb;
 
         for (i=0;i<n_calibrants;i++) {
             // mz_calib = A/((f-B)^2) =
             //      A / ((1/sqrt(mz_meas))-B)^2
             freq = 1/sqrt(calibrants[i].mz_meas);
-            x = freq - b;
-            if (x == 0.0) {
+            fb = freq - b;
+            if (fb == 0.0) {
                 rv = GSL_ERANGE;
             }
             else {
-                mz_calib = a/(x*x);
+                mz_calib = a/(fb*fb);
                 gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
             }
         }
@@ -182,8 +182,8 @@ static int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
 
         for (i=0;i<n_calibrants;i++) {
             freq=1/calibrants[i].mz_meas;
-            gsl_matrix_set (J,i,0, 1/(freq-b) );
-            gsl_matrix_set (J,i,1, a/((freq-b)*(freq-b)) );
+            gsl_matrix_set (J,i,0, a/((freq-b)*(freq-b)) );
+            gsl_matrix_set (J,i,1, 1/(freq-b) );
         }
         break;
     }
@@ -207,8 +207,8 @@ static int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
                     rv = GSL_ERANGE;
                 }
                 else {
-                    gsl_matrix_set (J,i,0, 1.0/((freq-b)*(freq-b)));
-                    gsl_matrix_set (J,i,1, 2.0*a/((freq-b)*(freq-b)*(freq-b)));
+                    gsl_matrix_set (J,i,0, 2.0*a/((freq-b)*(freq-b)*(freq-b)));
+                    gsl_matrix_set (J,i,1, 1.0/((freq-b)*(freq-b)));
                 }
             }
         }
@@ -345,17 +345,16 @@ cal_params_t recalibratePeaks(recal_data_t *d,
 
     gsl_multifit_function_fdf func;
 
-    // ??? The array fed to gsl_vector_view_array needs to be a copy
-    // otherwise the result is not the same
-    cal_params_t cal_params_copy = cal_params;
-    gsl_vector_view x=gsl_vector_view_array(cal_params_copy.cal_pars,cal_params.nr_cal_pars);
-
     func.f = &calib_f;
     func.df = &calib_df;
     func.fdf = &calib_fdf;
 
     satisfied=0;
     while (d->n_calibrants >= min_cal && !satisfied) {
+        // ??? The array fed to gsl_vector_view_array needs to be a copy
+        // otherwise the result is not the same
+        cal_params_t cal_params_copy = cal_params;
+        gsl_vector_view x=gsl_vector_view_array(cal_params_copy.cal_pars,cal_params.nr_cal_pars);
         // least-squares fit first using all peaks, than removing those that don't fit
         iter=0;
         T = gsl_multifit_fdfsolver_lmder;
