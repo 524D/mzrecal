@@ -68,9 +68,9 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 						if idCal.retentionTime != -math.MaxFloat64 {
 							rtShift = retentionTime - idCal.retentionTime
 							if rtShift < 0 {
-								rtRel = rtShift / -par.lowRT
+								rtRel = 100.0 * rtShift / -par.lowRT
 							} else {
-								rtRel = rtShift / par.upRT
+								rtRel = 100.0 * rtShift / par.upRT
 							}
 						}
 						fmt.Printf(" cal:%s rtShift:%f(%0.2f%%) mz: %f charge:%d id-charge: %d;",
