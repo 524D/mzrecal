@@ -73,8 +73,8 @@ type params struct {
 	scoreFilter        *string  // PSM score filter to apply
 	charge             *string  // Charge range for calibrants
 	useIdentCharge     bool     // Use only chage as found in identification
-	minCharge          int      // min m/z for calibrants
-	maxCharge          int      // max m/z for calibrants
+	minCharge          int      // min charge for calibrants
+	maxCharge          int      // max charge for calibrants
 	args               []string // Addtional values passed on the command line
 }
 
@@ -91,7 +91,7 @@ type identifiedCalibrant struct {
 type chargedCalibrant struct {
 	idCal  *identifiedCalibrant
 	charge int     // assumed charge for finding m/z peak
-	mz     float64 // m/z value, computed from unchaged mass and charge
+	mz     float64 // m/z value, computed from uncharged mass and charge
 }
 
 // Calibrants with same m/z
@@ -239,13 +239,13 @@ func parseIntRange(r string, min int, max int) (int, int, error) {
 	m := re.FindStringSubmatch(r)
 	minOut := min
 	maxOut := max
-	if m[1] != "" {
+	if len(m) >= 2 && m[1] != "" {
 		minOut, _ = strconv.Atoi(m[1])
 		if minOut < min {
 			minOut = min
 		}
 	}
-	if m[2] != "" {
+	if len(m) >= 3 && m[2] != "" {
 		maxOut, _ = strconv.Atoi(m[2])
 		if maxOut > max {
 			maxOut = max
@@ -268,13 +268,13 @@ func parseFloat64Range(r string, min float64, max float64) (
 	m := re.FindStringSubmatch(r)
 	minOut := min
 	maxOut := max
-	if m[1] != "" {
+	if len(m) >= 2 && m[1] != "" {
 		minOut, _ = strconv.ParseFloat(m[1], 64)
 		if minOut < min {
 			minOut = min
 		}
 	}
-	if m[3] != "" {
+	if len(m) >= 4 && m[3] != "" {
 		maxOut, _ = strconv.ParseFloat(m[3], 64)
 		if maxOut > max {
 			maxOut = max
@@ -355,7 +355,7 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 	}
 	//	log.Print(len(cals), " of ", mzIdentML.NumIdents(), " identifications usable for calibration.")
 	if len(cals) == 0 {
-		log.Print("No identified spectra will be used as calibrant. Is scorefilter applicable for this file?")
+		log.Print("No identified spectra will be used as calibrant. Is the specified scorefilter applicable for this file?")
 	}
 	cals = append(cals, fixedCalibrants...)
 	sort.Sort(byRetention(cals))
