@@ -92,3 +92,13 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 		}
 	}
 }
+func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64, par params) {
+
+	if *debugSpecs != `` {
+		debugMin, debugMax, _ := parseIntRange(*debugSpecs, 0, numSpecs)
+		if i >= debugMin && i <= debugMax {
+			fmt.Printf("Spec %d precursor changed from %f to %f (%f)\n",
+				i, mzOrig, mzNew, mzOrig-mzNew)
+		}
+	}
+}

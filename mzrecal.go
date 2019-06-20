@@ -705,14 +705,15 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 					for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
 						for k, cvParam := range selectedIon.CvParam {
 							if cvParam.Accession == cvParamSelectedIonMz {
-								Mz, _ := strconv.ParseFloat(cvParam.Value, 64)
+								mz, err := strconv.ParseFloat(cvParam.Value, 64)
 								if err != nil {
 									log.Printf("Invalid mz value %s (spec %d)",
 										cvParam.Value, i)
 								} else {
-									mzNew := mzRecal(Mz, &recalPars)
+									mzNew := mzRecal(mz, &recalPars)
 									selectedIon.CvParam[k].Value =
 										strconv.FormatFloat(mzNew, 'f', 8, 64)
+									debugLogPrecursorUpdate(i, numSpecs, mz, mzNew, par)
 									precursorsUpdated++
 								}
 							}
