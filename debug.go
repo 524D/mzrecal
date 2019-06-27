@@ -13,6 +13,9 @@ import (
 
 var debugSpecs *string // Print debug output for given spectrum range
 
+// Map each calibrant to it's used spectrum id's
+var calUsed4Spec = map[identifiedCalibrant][]int{}
+
 func init() {
 	debugSpecs = flag.String("debug", "",
 		`Print debug output for given spectrum range e.g. 3:6`)
@@ -92,6 +95,7 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 		}
 	}
 }
+
 func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64, par params) {
 
 	if *debugSpecs != `` {
@@ -99,6 +103,25 @@ func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64,
 		if i >= debugMin && i <= debugMax {
 			fmt.Printf("Spec %d precursor changed from %f to %f (%f)\n",
 				i, mzOrig, mzNew, mzOrig-mzNew)
+		}
+	}
+}
+
+func debugRegisterCalUsed(i int, matchingCals []calibrant, par params, calibrantsUsed []int) {
+	for _, cu := range calibrantsUsed {
+		mc := matchingCals[cu]
+		for _, cc := range mc.chargedCals {
+			calUsed4Spec[*cc.idCal] = append(calUsed4Spec[*cc.idCal], i)
+		}
+	}
+}
+
+func debugListUnusedCalibrants(allCals []identifiedCalibrant) {
+	fmt.Printf("Unused calibrants\n")
+	for _, ac := range allCals {
+		_, ok := calUsed4Spec[ac]
+		if !ok {
+			fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*protonMass)/float64(ac.idCharge))
 		}
 	}
 }

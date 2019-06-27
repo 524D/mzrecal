@@ -547,11 +547,13 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 			debugLogSpecs(i, numSpecs, retentionTime, peaks, matchingCals, par,
 				calibrantsUsed, recalMethod, specRecalPar)
+			debugRegisterCalUsed(i, matchingCals, par, calibrantsUsed)
 
 			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
 			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
+	debugListUnusedCalibrants(idCals)
 	return recal, nil
 }
 
