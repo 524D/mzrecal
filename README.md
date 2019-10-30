@@ -8,17 +8,14 @@ The core of the program is written in [Go](https://golang.org/). A relatively
 small part is written in the C language, this is required to access the GSL
 library which is used to compute the recalibration parameters.
 
-On Ubuntu 18.04, the prerequisites can be installed with:
+On Ubuntu 18.04, installing the prerequisites and downloading/building the code is just 2 lines:
 
 ```
 sudo apt install golang gcc libgsl-dev
-go get golang.org/x/net/html/charset
+go get -ldflags '-extldflags "-static"' github.com/524D/mzrecal
 ```
 
-To build the code:
-```
-go build -a -ldflags '-extldflags "-static"' -o mzrecal
-```
+The resulting executable program can then be found at `~/go/bin/mzrecal`.
 
 A Docker image can be build by running the script build-docker.sh
 
@@ -187,23 +184,23 @@ BUILD-IN CALIBRANTS:
      cyclosiloxane12 (888.225496)
 
 EXECUTION STAGES:
-        Recalibration consists of 2 stages. By default they are executed consequtively,
-        but it is also possible to execute them seperately by specifying the -stage flag:
-        1) Computation of recalibration coefficients. The coefficients are stored
-                in a JSON file.
-                This stage reads an mzML file and mzID file, matches measured peaks to
-                computed m/z values and computes recalibration coefficents using a method
-                that is usefull for the instrument type. The instrument type (and other
-                relavant values) are determined from the CV terms in the input files.
-        2) Creating a recalibrated version of the MS file.
-                This stage reads the mzML file and JSON file with recalibration values,
-                computes recalibrated m/z values for all peaks in spectra for which
-                a valid recalibration was found, and writes a recalibrated mzML file.
+    Recalibration consists of 2 stages. By default they are executed consequtively,
+    but it is also possible to execute them seperately by specifying the -stage flag:
+    1) Computation of recalibration coefficients. The coefficients are stored
+       in a JSON file.
+       This stage reads an mzML file and mzID file, matches measured peaks to
+       computed m/z values and computes recalibration coefficents using a method
+       that is usefull for the instrument type. The instrument type (and other
+       relavant values) are determined from the CV terms in the input files.
+    2) Creating a recalibrated version of the MS file.
+       This stage reads the mzML file and JSON file with recalibration values,
+       computes recalibrated m/z values for all peaks in spectra for which
+       a valid recalibration was found, and writes a recalibrated mzML file.
 
 USAGE EXAMPLES:
   mzrecal BSA.mzML
-         Read BSA.mzML and BSA.mzid, write recalibrated result to BSA-recal.mzML
-         and write recalibration coefficents BSA-recal.json.
+     Read BSA.mzML and BSA.mzid, write recalibrated result to BSA-recal.mzML
+     and write recalibration coefficents BSA-recal.json.
 
   mzrecal -stage 1 -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
      Only perform first stage of the recalibration.
