@@ -1,10 +1,11 @@
 #!/bin/bash
-TARGET_DIR='/home/robm/mzrecal'
-DATA_DIR='/home/robm/data/msrecal_ribosomes'
-TOOLS_DIR='/home/robm/tools'
+TARGET_DIR="${HOME}/mzrecal"
+DATA_DIR="${HOME}/data/msrecal_ribosomes"
+TOOLS_DIR="${HOME}/tools"
 FN_BASE='human_ribosome_60S_bottomup_peak'
 FASTA='uniprothuman_20180620.fasta'
 T='/usr/bin/time -f %E'
+COMET="${TOOLS_DIR}/comet.2019011.linux.exe"
 
 # Extensions of files that we will create
 # To avoid problems, we remove them before starting
@@ -19,7 +20,7 @@ mkdir -p "${TARGET_DIR}"
 $T go build -a -ldflags '-extldflags "-static"' -o "${TARGET_DIR}/mzrecal"
 
 echo -n "Running comet "
-$T "${TOOLS_DIR}/comet.2018012.linux.exe" "-D${DATA_DIR}/${FASTA}" "-P${TOOLS_DIR}/comet.params" "${DATA_DIR}/${FN_BASE}.mzML" >/dev/null
+$T "${COMET}/comet.2018014.linux.exe" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet.params" "${DATA_DIR}/${FN_BASE}.mzML" >/dev/null
 
 echo "Converting to .pep.xml "
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}.pep.xml" >/dev/null 2>/dev/null
@@ -27,15 +28,13 @@ echo "Converting to .pep.xml "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
-echo -n "Computing recalibration "
+echo -n "Recalibration "
 $T "${TARGET_DIR}/mzrecal" -scoreFilter="MS:1002257(0.0:0.05)" "${DATA_DIR}/${FN_BASE}.mzML"
-echo -n "Creating recalibrated output "
-$T "${TARGET_DIR}/mzrecal" -recal "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running msconvert (generating indexed mzml) "
 $T "${TOOLS_DIR}/msconvert" "${DATA_DIR}/${FN_BASE}-recal.mzML" --outfile "${FN_BASE}-recal.indexed.mzML" -o "${DATA_DIR}"  >/dev/null
 echo -n "Running comet on recalibrated output "
-$T "${TOOLS_DIR}/comet.2018012.linux.exe" -D${DATA_DIR}/${FASTA} "-P${TOOLS_DIR}/comet.params" "${DATA_DIR}/${FN_BASE}-recal.indexed.mzML"  >/dev/null
+$T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet.params" "${DATA_DIR}/${FN_BASE}-recal.indexed.mzML"  >/dev/null
 
 echo "Converting to .pep.xml "
 "$TOOLS_DIR/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}-recal.indexed.pep.xml" >/dev/null 2>/dev/null
