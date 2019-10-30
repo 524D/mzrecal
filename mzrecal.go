@@ -18,8 +18,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mzrecal/mzidentml"
-	"mzrecal/mzml"
+	"github.com/524D/mzrecal/internal/mzidentml"
+	"github.com/524D/mzrecal/internal/mzml"
 )
 
 // Program name and version, appended to software list in mzML output

@@ -8,7 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"math"
-	"mzrecal/mzml"
+
+	"github.com/524D/mzrecal/internal/mzml"
 )
 
 var debugSpecs *string // Print debug output for given spectrum range
