@@ -332,7 +332,8 @@ static void init_cal_params(cal_params_t *cal_params, calib_method_t calib_metho
 cal_params_t recalibratePeaks(recal_data_t *d,
                               int min_cal,
                               double internal_calibration_target,
-                              int spec_nr){
+                              int spec_nr,
+                              int debug){
     int status, satisfied, j, vi;
 
     const gsl_multifit_fdfsolver_type *T;
@@ -341,6 +342,8 @@ cal_params_t recalibratePeaks(recal_data_t *d,
     int iter=0;
     cal_params_t cal_params;
 
+    if (debug) setvbuf(stdout, NULL, _IONBF, 0);  // Autoflush
+    if (debug) printf("Spec %d\n", spec_nr);
     init_cal_params(&cal_params, d->calib_method);
 
     gsl_multifit_function_fdf func;
@@ -369,10 +372,13 @@ cal_params_t recalibratePeaks(recal_data_t *d,
             iter++;
             status = gsl_multifit_fdfsolver_iterate (s);
 
-            if (status)
+            if (status) {
+                if (debug) printf("gsl_multifit_fdfsolver_iterate status %d, breaking loop\n", status);
                 break;
+            }
             status=gsl_multifit_test_delta (s->dx, s->x, EPS_ABS, EPS_REL);
         } while (status==GSL_CONTINUE && iter<MAX_FDF_SOLVER_ITER);
+        if (debug) printf("gsl_multifit_test_delta status %d, iter %d \n", status, iter);
 
         for (vi=0; vi<cal_params.nr_cal_pars; vi++) {
             cal_params.cal_pars[vi] = gsl_vector_get(s->x,vi);
@@ -384,10 +390,14 @@ cal_params_t recalibratePeaks(recal_data_t *d,
         // OK, that was one internal recalibration, now lets check if all calibrants are < internal_calibration_target, if not, throw these out
         // and recalibrate (as long as we have at least min_cal peaks)
         int accepted_idx = 0;
+        if (debug) printf("Remaining calibrants: \n");
         for(j=0; j<d->n_calibrants; j++) {
             double mz_calc = d->calibrants[j].mz_calc;
             double mz_meas = d->calibrants[j].mz_meas;
             double mz_recal = mz_recalX(mz_meas, &cal_params);
+            if (debug)
+                printf("mz_calc=%f mz_meas=%f mz_recal=%f errppm=%f accept=%d\n", mz_calc, mz_meas, mz_recal,
+                 1000000*((mz_calc-mz_recal)/mz_calc), (int)(fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target));
             if (fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target) {
                 d->calibrants[accepted_idx++] = d->calibrants[j];
             }
