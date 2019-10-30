@@ -2,9 +2,6 @@
 * Output log file with e.g. which identifications where not matched to
   a peak in MS1, how many identifications did not match score filter,
   performance timing for each step.
-* Implement the recalibration functions for TOF
-* Execute both steps in one run (computation of recalibration coefficents and
-  recalibration)
 * (optionally) discard identifications that result in nearly the same
   MS1 mass (but not the ones that are equal to within numeric accuracy,
   because they have the same elemental composition and should be merged)
