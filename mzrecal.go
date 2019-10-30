@@ -1,4 +1,4 @@
-// Copyright 2017 Rob Marissen. All rights reserved.
+// Copyright 2018 Rob Marissen. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -56,7 +56,7 @@ const (
 
 // Command line parameters
 type params struct {
-	recal              *bool // Compute recal parmeters (false) or recalibrate (true)
+	stage              *int // Compute recal parmeters (1), recalibrate (2) or both (0)
 	mzMLFilename       *string
 	mzMLRecalFilename  *string
 	mzIdentMlFilename  *string
@@ -758,10 +758,15 @@ func doRecal(par params) {
 		log.Fatalf("readRecal: error return %v", err)
 	}
 
+	calibMzML(par, mzML, recal)
+}
+
+// calibMzML re-calibrates an mzML file:
+// Recalibrate each spectrum
+// Add our program name and version to the mlML software list
+// Write recalibrated mlML file
+func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
-	if err != nil {
-		log.Fatalf("recalMethodStr2Int: error return %v", err)
-	}
 
 	for _, specRecalPar := range recal.SpecRecalPar {
 		// Skip spectra for which no recalibration coefficients are available
@@ -793,7 +798,7 @@ func doRecal(par params) {
 	}
 }
 
-func makeRecalCoefficients(par params) {
+func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	scoreFilt, err := parseScoreFilter(*par.scoreFilter)
 	if err != nil {
 		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
@@ -818,12 +823,12 @@ func makeRecalCoefficients(par params) {
 		log.Fatalf("Open: mzMLfile %v", err)
 	}
 	defer f2.Close()
-	mzML, err := mzml.Read(f2)
+	mzML, err = mzml.Read(f2)
 	if err != nil {
 		log.Fatalf("mzml.Read: error return %v", err)
 	}
 
-	recal, err := computeRecal(&mzML, idCals, par)
+	recal, err = computeRecal(&mzML, idCals, par)
 	if err != nil {
 		log.Fatalf("computeRecal: error return %v", err)
 	}
@@ -832,6 +837,7 @@ func makeRecalCoefficients(par params) {
 	if err != nil {
 		log.Fatalf("writeRecal: error return %v", err)
 	}
+	return mzML, recal
 }
 
 // sanatizeParams does some checks on parameters, and fills missing
@@ -895,22 +901,6 @@ USAGE:
   This program can be used to recalibrate MS data in an mzML file
   using peptide identifications in an accompanying mzID file.
 
-  Recalibration is divided in 2 steps:
-  1) Computation of recalibration coefficients. The coefficients are stored
-     in a JSON file.
-     This step reads an mzML file and mzID file, matches measured peaks to
-     computed m/z values and computes recalibration coefficents using a method
-     that is usefull for the instrument type. The instrument type (and other
-     relavant values) are determined from the CV terms in the input files.
-  2) Creating a recalibrated version of the MS file.
-     This step reads the mzML file and JSON file with recalibration values,
-     computes recalibrated m/z values for all peaks in spectra for which
-     a valid recalibration was found, and writes a recalibrated mzML file.
-
-  The default operation is computation of the recalibration values (the
-  first step). Flag -recal switches to creation of the recalibrated mzML
-  file (the second step).
-
 OPTIONS:
 `, progName)
 	flag.PrintDefaults()
@@ -929,16 +919,31 @@ BUILD-IN CALIBRANTS:
 
 	fmt.Fprintf(os.Stderr,
 		`
+EXECUTION STAGES:
+	Recalibration consists of 2 stages. By default they are executed consequtively,
+	but it is also possible to execute them seperately by specifying the -stage flag:
+	1) Computation of recalibration coefficients. The coefficients are stored
+		in a JSON file.
+		This stage reads an mzML file and mzID file, matches measured peaks to
+		computed m/z values and computes recalibration coefficents using a method
+		that is usefull for the instrument type. The instrument type (and other
+		relavant values) are determined from the CV terms in the input files.
+	2) Creating a recalibrated version of the MS file.
+		This stage reads the mzML file and JSON file with recalibration values,
+		computes recalibrated m/z values for all peaks in spectra for which
+		a valid recalibration was found, and writes a recalibrated mzML file.
+
 USAGE EXAMPLES:
   %s BSA.mzML
-     Read BSA.mzML and BSA.mzid, write recalibration coefficents
-     to BSA-recal.json.
+	 Read BSA.mzML and BSA.mzid, write recalibrated result to BSA-recal.mzML
+	 and write recalibration coefficents BSA-recal.json.
 
-  %s -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
+  %s -stage 1 -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
+     Only perform first stage of the recalibration.
      Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
-     to BSA_comet-recal.json
+     to BSA_comet-recal.json.
 
-  %s -recal BSA.mzML
+  %s -stage 2 BSA.mzML
      Read BSA.mzML and BSA-recal.json, write recalibrated output to
      BSA-recal.mzML
 `, progName, progName, progName)
@@ -955,9 +960,13 @@ function is determined from the instrument specified in the mzML file.
 Valid function names:
     FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
     POLY<N>: Polynomial with degee <N> (range 1:5)`)
-	par.recal = flag.Bool("recal", false,
-		`Switch between computation of recalibration parameters (default) and actual
-	recalibration`)
+	par.stage = flag.Int("stage", 0,
+		`0: do all calibration stages in one run
+1: only compute recalibration parameters
+2: perform recalibration using previously computer parameters
+	NOTE: The mzML file that is produced after recalibration does not contain an
+	index. If an index is required, we recommend post-processing the output file 
+	with msconvert (http://proteowizard.sourceforge.net/download.html).`)
 	par.mzMLRecalFilename = flag.String("mzmlOut",
 		"",
 		"recalibrated mzML filename (only together with -recal)\n")
@@ -1015,9 +1024,13 @@ only the charge as found in the mzIdentMl file will be used for calibration.
 	}
 	par.args = flag.Args()
 	sanatizeParams(&par)
-	if *par.recal {
-		doRecal(par)
-	} else {
+	switch *par.stage {
+	case 1:
 		makeRecalCoefficients(par)
+	case 2:
+		doRecal(par)
+	default:
+		mzML, recal := makeRecalCoefficients(par)
+		calibMzML(par, mzML, recal)
 	}
 }
