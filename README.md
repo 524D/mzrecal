@@ -8,7 +8,7 @@ The core of the program is written in [Go](https://golang.org/). A relatively
 small part is written in the C language, this is required to access the GSL
 library which is used to compute the recalibration parameters.
 
-On Ubuntu 18.04, installing the prerequisites and downloading/building the code is just 2 lines:
+On Ubuntu 18.04, to install the prerequisites and download/build the code:
 
 ```
 sudo apt install golang gcc libgsl-dev
@@ -26,17 +26,16 @@ mzrecal.
 mzrecal uses file formats specified by the Proteomics Standards Initiative 
 (PSI), notably [mzML](http://www.psidev.info/mzML) and [mzIdentML](http://www.psidev.info/mzidentml).
 
-To compute recalibration parameters, a peak-picked mzML file and corresponding
-mzIdentML (file extension .mzid) file are needed as input. From this, a .json
-file is produced containing parameters for recalibration.
-
-For the actual recalibration, the .json files from the first step plus the
-mzML file are used, and a recalibrated mzML file is produced.
+For recalibration, a peak-picked mzML file and corresponding
+mzIdentML (file extension .mzid) file are needed as input.
+Running `mzrecal` produces a recalibrated mzML file, plus a file with recalibration
+parameters (.json format). The latter can be used to manually inspect 
+the calibration for each spectrum.
 
 Note that the output mzML file will not contain the index wrapper
 (which is optional according to the mzML specification, but still required by
-some software). The msconvert program from the ProteoWizard toolkit is
-recommended to add the index.
+some software). The [msconvert](http://proteowizard.sourceforge.net/download.html)
+program from the ProteoWizard toolkit is recommended to add the index.
 
 The sample below shows the start, middle and end of a .json file with
 recalibration parameters.
@@ -91,10 +90,10 @@ result. The reason is that we used the option -empty-non-calibrated, causing
 MS2 spectra for which the precursor could not be recalibrated to be dropped.
 ![ppm-histogram](./ppmerr.png)
 
-# Go libraries for mzML and mzIdentML
-The current version of the code embeds two Go packages, one for reading
+# Go packages for mzML and mzIdentML
+The current version of the code embeds two internal Go packages, one for reading
 mzIdentML and one for reading/writing mzML files. These packages will likely
-be split into a separate library at a later time.
+be split into a separate module at a later time.
 
 # <a name="usage"></a>Usage
 
