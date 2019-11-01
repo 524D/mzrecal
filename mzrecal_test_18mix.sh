@@ -1,5 +1,4 @@
 #!/bin/bash
-TARGET_DIR="${HOME}/mzrecal"
 DATA_DIR="${HOME}/data/18_Mix"
 TOOLS_DIR="${HOME}/tools"
 FN_BASES='OR20070924_S_mix7_02 OR20070924_S_mix7_03 OR20070924_S_mix7_04 OR20070924_S_mix7_05 OR20070924_S_mix7_02 OR20070924_S_mix7_06 OR20070924_S_mix7_07 OR20070924_S_mix7_08 OR20070924_S_mix7_09 OR20070924_S_mix7_10 OR20070924_S_mix7_11'
@@ -39,7 +38,7 @@ echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
 echo -n "Recalibration "
-$T "${TARGET_DIR}/mzrecal" -mzTry=10 -mzAccept=3 -scoreFilter="MS:1002257(0.0:0.05)"  -empty-non-calibrated "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -mzTry=10 -mzAccept=3 -scoreFilter="MS:1002257(0.0:0.05)"  -empty-non-calibrated "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running msconvert (generating indexed mzml) "
 $T "${TOOLS_DIR}/msconvert" "${DATA_DIR}/${FN_BASE}-recal.mzML" --outfile "${FN_BASE}-recal.indexed.mzML" -o "${DATA_DIR}"  >/dev/null
