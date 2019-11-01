@@ -118,11 +118,13 @@ func debugRegisterCalUsed(i int, matchingCals []calibrant, par params, calibrant
 }
 
 func debugListUnusedCalibrants(allCals []identifiedCalibrant) {
-	fmt.Printf("Unused calibrants\n")
-	for _, ac := range allCals {
-		_, ok := calUsed4Spec[ac]
-		if !ok {
-			fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*protonMass)/float64(ac.idCharge))
+	if *debugSpecs != `` {
+		fmt.Printf("Unused calibrants\n")
+		for _, ac := range allCals {
+			_, ok := calUsed4Spec[ac]
+			if !ok {
+				fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*protonMass)/float64(ac.idCharge))
+			}
 		}
 	}
 }
