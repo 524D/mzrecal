@@ -663,6 +663,53 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 	return scoreFilt, nil
 }
 
+type rtSpec struct {
+	rt   float64
+	spec int
+}
+
+type rtSpecs []rtSpec
+
+func (a rtSpecs) Len() int           { return len(a) }
+func (a rtSpecs) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a rtSpecs) Less(i, j int) bool { return a[i].rt < a[j].rt }
+
+// Find the index of the MS1 scan that has a retention time just less than
+// the retention time in rt
+func findRtMs1(rt float64, rtOfSpecs rtSpecs) int {
+	j := sort.Search(len(rtOfSpecs), func(i int) bool { return rtOfSpecs[i].rt >= rt })
+	if j > 0 {
+		j--
+	}
+	return rtOfSpecs[j].spec
+}
+
+// initRtMs1 created a data structure needed by findRtMs1
+func initRtMs1(mzML mzml.MzML) (rtSpecs, error) {
+	var rtOfSpec rtSpec
+	numSpecs := mzML.NumSpecs()
+	rtOfMs1Specs := make(rtSpecs, 0, numSpecs)
+
+	for i := 0; i < numSpecs; i++ {
+		// Get retention time of MS1 spectra
+		MSLevel, err := mzML.MSLevel(i)
+		if err != nil {
+			return nil, err
+		}
+		if MSLevel == 1 {
+			rtOfSpec.spec = i
+			rtOfSpec.rt, err = mzML.RetentionTime(i)
+			if err != nil {
+				return nil, err
+			}
+			rtOfMs1Specs = append(rtOfMs1Specs, rtOfSpec)
+		}
+	}
+	sort.Sort(rtOfMs1Specs)
+
+	return rtOfMs1Specs, nil
+}
+
 func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 
 	var precursorsUpdated, precursorsTotal int
@@ -676,6 +723,11 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 	for i, specRecalPar := range recal.SpecRecalPar {
 		specIndex2recalIndex[specRecalPar.SpecIndex] = i
 	}
+
+	rtOfMs1Specs, err := initRtMs1(mzML)
+	if err != nil {
+		return err
+	}
 	numSpecs := mzML.NumSpecs()
 	for i := 0; i < numSpecs; i++ {
 		// Only update precursors for MS2
@@ -685,21 +737,28 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 		}
 		if MSLevel == 2 {
 			precursorsTotal++
+			// The precursor MS1 spectrum is the one for which we have recalibration
+			// Find the MS1 spctrum that belongs to this MS2, so that
+			// we can recalibrate the precursor mass of the MS2.
+			// We cannot use SpectrumRef to obtain the parent spectrum
+			// because it is not always present (i.e. SCIEX)
+			// therefore, we assume that previous (retention time wise) MS1 spectrum
+			// is the correct one.
+			rt, err := mzML.RetentionTime(i)
+			if err != nil {
+				return err
+			}
+			ms1ScanIndex := findRtMs1(rt, rtOfMs1Specs)
+
 			precursors, err := mzML.GetPrecursors(i)
 			if err != nil {
 				return err
 			}
 			for _, precursor := range precursors {
-				spectrumRef := precursor.SpectrumRef
-				scanIndex, err := mzML.ScanIndex(spectrumRef)
-				if err != nil {
-					log.Printf("Invalid spectrumRef %s (spec %d)",
-						spectrumRef, i)
-				}
-				recalIndex, ok := specIndex2recalIndex[scanIndex]
+				recalIndex, ok := specIndex2recalIndex[ms1ScanIndex]
 				if !ok {
 					log.Printf("Recalibration parameters missing for scanIndex %d)",
-						scanIndex)
+						ms1ScanIndex)
 				}
 				if ok && recal.SpecRecalPar[recalIndex].P != nil {
 					specRecalPar := recal.SpecRecalPar[recalIndex]
