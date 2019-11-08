@@ -24,7 +24,8 @@ import (
 
 // Program name and version, appended to software list in mzML output
 const progName = "mzRecal"
-const progVersion = "0.1"
+
+var progVersion = "Unknown, please build with 'build.sh' to get version from git"
 
 // Format of output, if it ever changes we should still be able to parse
 // output from old versions
