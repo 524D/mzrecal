@@ -1,14 +1,6 @@
 package main
 
-// // Dynamic link against gsl (probably needed for Cygwin)
-// // #cgo LDFLAGS: -lgsl -lgslcblas -lm
-
-// Static link against gls
-
 /*
-#cgo LDFLAGS: /usr/lib/x86_64-linux-gnu/libgsl.a
-#cgo LDFLAGS: /usr/lib/x86_64-linux-gnu/libgslcblas.a
-#cgo LDFLAGS: -lm
 #include <stdlib.h>
 #include "recal.h"
 */
@@ -25,7 +17,7 @@ func recalibrateSpec(specIndex int, recalMethod int,
 	specRecalPar.SpecIndex = specIndex
 
 	// FIXME: Handle out of memory for C.malloc (not sure if it returns nil or panics...)
-	calibrantList := (*C.calibrant_t)(C.malloc(C.ulong(C.sizeof_calibrant_t * len(mzCalibrants))))
+	calibrantList := (*C.calibrant_t)(C.malloc(C.size_t(C.sizeof_calibrant_t * len(mzCalibrants))))
 	for i, calibrant := range mzCalibrants {
 		C.fill_calibrant_list(calibrantList, C.int(i), C.double(calibrant.mz),
 			C.double(calibrant.mzMeasured))
