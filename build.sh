@@ -3,6 +3,7 @@ TARGET_DIR=~/tools
 
 mkdir -p $TARGET_DIR
 VERSION=$(git describe --abbrev --dirty --always --tags)
+VERSION=${VERSION#"v"}
 
 # Build for Linux
 go build -a -ldflags "-extldflags \"-static\" -X main.progVersion=${VERSION}" -o $TARGET_DIR/mzrecal
