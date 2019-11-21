@@ -6,3 +6,4 @@
   MS1 mass (but not the ones that are equal to within numeric accuracy,
   because they have the same elemental composition and should be merged)
 * Generate indexed mzML file automatically
+* Create web interface
