@@ -5,6 +5,7 @@
 package main
 
 import (
+	"C"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -766,40 +767,9 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 				if ok && recal.SpecRecalPar[recalIndex].P != nil {
 					specRecalPar := recal.SpecRecalPar[recalIndex]
 					recalPars := setRecalPars(recalMethod, specRecalPar)
-					isolationWindow := precursor.IsolationWindow
-					for k, cvParam := range isolationWindow.CvParam {
-						if cvParam.Accession == cvIsolationWindowTargetMz {
-							mz, err := strconv.ParseFloat(cvParam.Value, 64)
-							if err != nil {
-								log.Printf("Invalid mz value %s (spec %d)",
-									cvParam.Value, i)
-							} else {
-								mzNew := mzRecal(mz, &recalPars)
-								isolationWindow.CvParam[k].Value =
-									strconv.FormatFloat(mzNew, 'f', 8, 64)
-								debugLogPrecursorUpdate(i, numSpecs, mz, mzNew, par)
-								break
-							}
-						}
-
-					}
-					for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
-						for k, cvParam := range selectedIon.CvParam {
-							if cvParam.Accession == cvParamSelectedIonMz {
-								mz, err := strconv.ParseFloat(cvParam.Value, 64)
-								if err != nil {
-									log.Printf("Invalid mz value %s (spec %d)",
-										cvParam.Value, i)
-								} else {
-									mzNew := mzRecal(mz, &recalPars)
-									selectedIon.CvParam[k].Value =
-										strconv.FormatFloat(mzNew, 'f', 8, 64)
-									debugLogPrecursorUpdate(i, numSpecs, mz, mzNew, par)
-									precursorsUpdated++
-									break
-								}
-							}
-						}
+					recalIsolationWindow(&precursor, &recalPars, par, i)
+					if recalSelectedIons(&precursor, &recalPars, par, i, numSpecs) {
+						precursorsUpdated++
 					}
 				} else {
 					if *par.emptyNonCalibrated {
@@ -813,6 +783,48 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 	}
 	log.Printf("MS2 count: %d Updated:%d\n", precursorsTotal, precursorsUpdated)
 	return nil
+}
+
+func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, par params, specNr int) {
+	isolationWindow := precursor.IsolationWindow
+	for k, cvParam := range isolationWindow.CvParam {
+		if cvParam.Accession == cvIsolationWindowTargetMz {
+			mz, err := strconv.ParseFloat(cvParam.Value, 64)
+			if err != nil {
+				log.Printf("Invalid mz value %s (spec %d)",
+					cvParam.Value, specNr)
+			} else {
+				mzNew := mzRecal(mz, recalPars)
+				isolationWindow.CvParam[k].Value =
+					strconv.FormatFloat(mzNew, 'f', 8, 64)
+				break
+			}
+		}
+	}
+}
+
+func recalSelectedIons(precursor *mzml.XMLprecursor, recalPars *CalParams,
+	par params, specNr int, numSpecs int) bool {
+	var updated bool
+	for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
+		for k, cvParam := range selectedIon.CvParam {
+			if cvParam.Accession == cvParamSelectedIonMz {
+				mz, err := strconv.ParseFloat(cvParam.Value, 64)
+				if err != nil {
+					log.Printf("Invalid mz value %s (spec %d)",
+						cvParam.Value, specNr)
+				} else {
+					mzNew := mzRecal(mz, recalPars)
+					selectedIon.CvParam[k].Value =
+						strconv.FormatFloat(mzNew, 'f', 8, 64)
+					debugLogPrecursorUpdate(specNr, numSpecs, mz, mzNew, par)
+					updated = true
+					break
+				}
+			}
+		}
+	}
+	return updated
 }
 
 // doRecal glues together all the steps to produce a

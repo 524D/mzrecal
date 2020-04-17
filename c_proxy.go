@@ -9,6 +9,11 @@ import (
 	"unsafe"
 )
 
+// CalParams packs the "c" structure with calibration parameters
+type CalParams struct {
+	cCalPar C.cal_params_t
+}
+
 func recalibrateSpec(specIndex int, recalMethod int,
 	mzCalibrants []calibrant, par params) (
 	specRecalParams, []int, error) {
@@ -47,18 +52,18 @@ func recalibrateSpec(specIndex int, recalMethod int,
 	return specRecalPar, calibrantsUsed, nil
 }
 
-func setRecalPars(recalMethod int, specRecalPar specRecalParams) C.cal_params_t {
-	var cCalPar C.cal_params_t
-	cCalPar.calib_method = C.calib_method_t(recalMethod)
-	cCalPar.nr_cal_pars = C.int(len(specRecalPar.P))
+func setRecalPars(recalMethod int, specRecalPar specRecalParams) CalParams {
+	var calPar CalParams
+	calPar.cCalPar.calib_method = C.calib_method_t(recalMethod)
+	calPar.cCalPar.nr_cal_pars = C.int(len(specRecalPar.P))
 	for i, p := range specRecalPar.P {
-		cCalPar.cal_pars[i] = C.double(p)
+		calPar.cCalPar.cal_pars[i] = C.double(p)
 	}
-	return cCalPar
+	return calPar
 }
 
-func mzRecal(mz float64, recalPar *C.cal_params_t) float64 {
-	mzNew := float64(C.mz_recalX(C.double(mz), recalPar))
+func mzRecal(mz float64, recalPar *CalParams) float64 {
+	mzNew := float64(C.mz_recalX(C.double(mz), &recalPar.cCalPar))
 	return mzNew
 }
 
