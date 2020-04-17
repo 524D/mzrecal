@@ -38,6 +38,7 @@ const protonMass = float64(1.007276466879)
 
 // CV parameters names
 const cvParamSelectedIonMz = `MS:1000744`
+const cvIsolationWindowTargetMz = `MS:1000827`
 const cvFTICRSpectrometer = `MS:1000079`
 const cvTOFSpectrometer = `MS:1000084`
 const cvOrbiTrapSpectrometer = `MS:1000484`
@@ -765,6 +766,23 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 				if ok && recal.SpecRecalPar[recalIndex].P != nil {
 					specRecalPar := recal.SpecRecalPar[recalIndex]
 					recalPars := setRecalPars(recalMethod, specRecalPar)
+					isolationWindow := precursor.IsolationWindow
+					for k, cvParam := range isolationWindow.CvParam {
+						if cvParam.Accession == cvIsolationWindowTargetMz {
+							mz, err := strconv.ParseFloat(cvParam.Value, 64)
+							if err != nil {
+								log.Printf("Invalid mz value %s (spec %d)",
+									cvParam.Value, i)
+							} else {
+								mzNew := mzRecal(mz, &recalPars)
+								isolationWindow.CvParam[k].Value =
+									strconv.FormatFloat(mzNew, 'f', 8, 64)
+								debugLogPrecursorUpdate(i, numSpecs, mz, mzNew, par)
+								break
+							}
+						}
+
+					}
 					for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
 						for k, cvParam := range selectedIon.CvParam {
 							if cvParam.Accession == cvParamSelectedIonMz {
@@ -778,6 +796,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 										strconv.FormatFloat(mzNew, 'f', 8, 64)
 									debugLogPrecursorUpdate(i, numSpecs, mz, mzNew, par)
 									precursorsUpdated++
+									break
 								}
 							}
 						}
