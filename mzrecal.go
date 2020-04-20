@@ -68,6 +68,7 @@ type params struct {
 	emptyNonCalibrated *bool    // Empty MS2 spectra for which the precursor was not recalibrated
 	minCal             *int     // minimum number of calibrants a spectrum should have to be recalibrated
 	minPeak            *float64 // minimum intensity of peaks to be considered for recalibrating
+	calPeaks           *int     // number of peaks per potential calibrant to consider
 	rtWindow           *string  // retention time window
 	lowRT              float64  // lower rt window boundary
 	upRT               float64  // upper rt window boundary
@@ -234,6 +235,12 @@ type peaksByMass []mzml.Peak
 func (a peaksByMass) Len() int           { return len(a) }
 func (a peaksByMass) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a peaksByMass) Less(i, j int) bool { return a[i].Mz < a[j].Mz }
+
+type peaksByIntensity []mzml.Peak
+
+func (a peaksByIntensity) Len() int           { return len(a) }
+func (a peaksByIntensity) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a peaksByIntensity) Less(i, j int) bool { return a[i].Intens > a[j].Intens }
 
 // Parse string like "-12:6" into 2 values, -12 and 6
 // Parameters min and max are the "default" min/max values,
@@ -561,21 +568,58 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 	return recal, nil
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Return a slice with only the peaks that we want to base the calibration on
+// Only the most intence peaks are used, filtered by number of potential calibrants
+// and absolute peak size
+func filterPeaks(peaks []mzml.Peak, par params, c int) []mzml.Peak {
+	// Make a copy of the slice, we don't want to sort the origial
+	peaksNew := make([]mzml.Peak, len(peaks))
+	copy(peaksNew, peaks)
+	// sort by intensity, so the most intense peaks are at the front
+	sort.Sort(peaksByIntensity(peaksNew))
+	// Should we filter on number of potential calibrants?
+	if *par.calPeaks > 0 {
+		// The number of peaks to consider is:
+		// calPeaks * the number of potential calibrants
+		n1 := *par.calPeaks * c
+		// Set slice length to desired number of peaks,
+		// or length of original if that is less
+		peaksNew = peaksNew[:min(n1, len(peaksNew))]
+	}
+	// Should we filter on absolute peak size?
+	if *par.minPeak > 0 {
+		// Find the lowest peak that we still have to consider
+		n2 := sort.Search(len(peaksNew),
+			func(i int) bool { return peaksNew[i].Intens < *par.minPeak })
+		peaksNew = peaksNew[:min(n2, len(peaksNew))]
+	}
+	return peaksNew
+}
+
 func calibrantsMatchPeaks(peaks []mzml.Peak, calibrants []calibrant,
 	par params) []calibrant {
 	matchingCals := make([]calibrant, 0, len(calibrants))
 
-	// For each potental calibrant, find highest peak within mz window
+	// Remove the peaks that are too small
+	peaks = filterPeaks(peaks, par, len(calibrants))
 
-	// Peaks in mzml are probably always sorted by mass, but that is not specified
-	// by the schema/mzML description. Therefore, we must sort them now.
+	// Sort peaks by mass, so we can find matching masses quickly
 	sort.Sort(peaksByMass(peaks))
 
+	// For each potental calibrant, find highest peak within mz window
 	for _, calibrant := range calibrants {
 		mz := calibrant.mz
 		mzErr := *par.mzErrPPM * mz / 1000000.0
 		peak := maxPeakInMzWindow(mz-mzErr, mz+mzErr, peaks)
-		if peak.Intens > *par.minPeak {
+		// If a peak was found
+		if peak.Intens != 0 {
 			calibrant.mzMeasured = peak.Mz
 			matchingCals = append(matchingCals, calibrant)
 		}
@@ -1077,9 +1121,13 @@ If 0, the minimum number of calibrants is set to the smallest number needed
 for the choosen recalibration function plus one. In any other case, is the
 specified number is too low for the calibration function, it is increased to
 the minimum needed value.`)
+	par.calPeaks = flag.Int("calpeaks",
+		3,
+		`only the topmost (<calpeaks> * <number of potential calibrants>) are
+considered for computing the recalibration. <1 means all peaks.`)
 	par.minPeak = flag.Float64("minPeak",
-		10000,
-		"minimum intensity of peaks to be considered for recalibrating\n")
+		0.0,
+		`minimum peak intensity to consider for computing the recalibration.`)
 	par.rtWindow = flag.String("rt",
 		"-10.0:10.0",
 		"rt window (s)\n")
