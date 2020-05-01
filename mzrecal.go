@@ -137,6 +137,11 @@ type scoreRange struct {
 
 type scoreFilter map[string]scoreRange
 
+type mzRange struct {
+	min float64
+	max float64
+}
+
 var fixedCalibrants = []identifiedCalibrant{
 
 	// cyclosiloxanes, H6nC2nOnSin
@@ -476,6 +481,50 @@ func recalMethodStr2Int(recalMethodStr string) (int, error) {
 	return recalMethod, nil
 }
 
+// Get the minimum and maximum mz in a slice of peaks
+// Potentially, these values could be obtained from the corresponding
+// tags in the mzML file, be we don't want te depend on that.
+func mzRangePeaks(peaks []mzml.Peak) mzRange {
+	var r mzRange
+
+	if len(peaks) > 0 {
+		r.min = peaks[0].Mz
+		r.max = peaks[0].Mz
+		for _, p := range peaks {
+			m := p.Mz
+			if m < r.min {
+				r.min = m
+			}
+			if m > r.max {
+				r.max = m
+			}
+		}
+	}
+	return r
+}
+
+// Remove calibrants that are outside a given mzrange
+// We modify the slice of calibrants in place, hence it is
+// passed as a pointer
+func filterMzCalibs(calibrants *[]calibrant, r mzRange) {
+	if calibrants != nil {
+		k := int(0) // Index of calibrants that we want to keep
+		for i, c := range *calibrants {
+			if c.mz >= r.min && c.mz <= r.max {
+				// Calibrant is mz range
+				// If calibrant is not in range, k is not incremented,
+				// so it will be removed/overwritten
+				// Optimization: only copy is source and destination are the different
+				if k < i {
+					(*calibrants)[k] = (*calibrants)[i]
+				}
+				k++
+			}
+		}
+		*calibrants = (*calibrants)[:k] // Change slice length
+	}
+}
+
 func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
@@ -545,6 +594,10 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 				log.Fatalf("computeRecal ReadScan failed for spectrum %d: %v",
 					i, err)
 			}
+			// Remove calibrants outside of measured range
+			r := mzRangePeaks(peaks)
+			filterMzCalibs(&calibrants, r)
+
 			matchingCals := calibrantsMatchPeaks(peaks, calibrants, par)
 
 			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
