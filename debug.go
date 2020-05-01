@@ -123,7 +123,7 @@ func debugListUnusedCalibrants(allCals []identifiedCalibrant) {
 		for _, ac := range allCals {
 			_, ok := calUsed4Spec[ac]
 			if !ok {
-				fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*protonMass)/float64(ac.idCharge))
+				fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*massProton)/float64(ac.idCharge))
 			}
 		}
 	}

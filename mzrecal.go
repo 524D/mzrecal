@@ -35,7 +35,8 @@ const outputFormatVersion = "1.0"
 
 // Peptides m/z values within mergeMzTol are merged
 const mergeMzTol = float64(1e-7)
-const protonMass = float64(1.007276466879)
+const massProton = float64(1.007276466879)
+const massH2O = float64(18.0105647)
 
 // CV parameters names
 const cvParamSelectedIonMz = `MS:1000744`
@@ -301,7 +302,7 @@ func parseFloat64Range(r string, min float64, max float64) (
 
 // Compute the lowest isotope mass of the peptide
 func pepMass(pepSeq string) (float64, error) {
-	m := float64(18.0105647) // H2O
+	m := massH2O
 	for _, aa := range pepSeq {
 		aam, ok := aaMass[aa]
 		if !ok {
@@ -424,7 +425,7 @@ func newChargedCalibrant(charge int, idCal *identifiedCalibrant) chargedCalibran
 	var chargedCal chargedCalibrant
 
 	fCharge := float64(charge)
-	chargedCal.mz = (idCal.mass + fCharge*protonMass) / fCharge
+	chargedCal.mz = (idCal.mass + fCharge*massProton) / fCharge
 	chargedCal.idCal = idCal
 	chargedCal.charge = charge
 	return chargedCal
