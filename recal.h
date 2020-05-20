@@ -7,6 +7,7 @@ typedef enum {
     CALIB_FTICR,
     CALIB_TOF,
     CALIB_ORBITRAP,
+    CALIB_OFFSET,
     CALIB_POLY1,
     CALIB_POLY2,
     CALIB_POLY3,

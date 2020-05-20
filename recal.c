@@ -48,6 +48,9 @@ double mz_recalX(double mz_meas, cal_params_t *p)
         mz_calib = a/(fb*fb);
         }
         break;
+    case CALIB_OFFSET:
+        mz_calib = mz_meas + p->cal_pars[0];
+        break;
     case CALIB_POLY1:
         mz_calib = mz_recal_poly_n(mz_meas, p, 1);
         break;
@@ -143,6 +146,16 @@ static int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         }
         break;
     }
+    case CALIB_OFFSET: {
+        double a = gsl_vector_get (x, 0);
+        double mz_calib;
+        for (i=0;i<n_calibrants;i++) {
+            // mz_calib = mz_meas + a
+            mz_calib = calibrants[i].mz_meas + a;
+            gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
+            }
+        }
+        break;
     case CALIB_POLY1:
         calib_f_poly_n(x, recal_data_p, f, 1);
         break;
@@ -211,6 +224,11 @@ static int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
                     gsl_matrix_set (J,i,1, 1.0/((freq-b)*(freq-b)));
                 }
             }
+        }
+        break;
+    case CALIB_OFFSET:
+        for (i=0;i<n_calibrants;i++) {
+            gsl_matrix_set(J, i, 0, 1);
         }
         break;
     case CALIB_POLY1:
@@ -297,6 +315,9 @@ int get_nr_cal_pars(calib_method_t calib_method) {
   case CALIB_ORBITRAP:
       nr_cal_pars = 2;
       break;
+  case CALIB_OFFSET:
+      nr_cal_pars = 1;
+      break;
   case CALIB_POLY1:
       nr_cal_pars = 2;
       break;
@@ -382,6 +403,7 @@ cal_params_t recalibratePeaks(recal_data_t *d,
 
         for (vi=0; vi<cal_params.nr_cal_pars; vi++) {
             cal_params.cal_pars[vi] = gsl_vector_get(s->x,vi);
+            if (debug) printf("cal_pars[%d]=%f\n", vi, cal_params.cal_pars[vi]);
         }
 
         chi = gsl_blas_dnrm2(s->f);

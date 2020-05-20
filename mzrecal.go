@@ -52,6 +52,7 @@ const (
 	calibFTICR
 	calibTOF
 	calibOrbitrap
+	calibOffset
 	calibPoly1
 	calibPoly2
 	calibPoly3
@@ -465,6 +466,8 @@ func recalMethodStr2Int(recalMethodStr string) (int, error) {
 		recalMethod = calibTOF
 	case `ORBITRAP`:
 		recalMethod = calibOrbitrap
+	case `OFFSET`:
+		recalMethod = calibOffset
 	case `POLY1`:
 		recalMethod = calibPoly1
 	case `POLY2`:
@@ -667,7 +670,7 @@ func calibrantsMatchPeaks(peaks []mzml.Peak, calibrants []calibrant,
 	// Sort peaks by mass, so we can find matching masses quickly
 	sort.Sort(peaksByMass(peaks))
 
-	// For each potental calibrant, find highest peak within mz window
+	// For each potential calibrant, find highest peak within mz window
 	for _, calibrant := range calibrants {
 		mz := calibrant.mz
 		mzErr := *par.mzErrPPM * mz / 1000000.0
@@ -1149,7 +1152,8 @@ func main() {
 function is determined from the instrument specified in the mzML file.
 Valid function names:
     FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-    POLY<N>: Polynomial with degee <N> (range 1:5)`)
+	POLY<N>: Polynomial with degee <N> (range 1:5)
+	OFFSET: Constant m/z offset per spectrum.`)
 	par.stage = flag.Int("stage", 0,
 		`0: do all calibration stages in one run
 1: only compute recalibration parameters
