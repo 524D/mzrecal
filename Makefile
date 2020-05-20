@@ -81,5 +81,5 @@ $(RESULT_DIR)/%.mzid: $(RESULT_DIR)/%.pep.xml
 
 # Recalibrate
 $(RESULT_DIR)/%-recal.mzML: %.mzML $(RESULT_DIR)/%.mzid $(MZRECAL)
-	$(MZRECAL) $(MZRECAL_FLAGS) -mzid=$(RESULT_DIR)/$*.mzid -mzmlOut=$@ $<
+	$(MZRECAL) $(MZRECAL_FLAGS) -mzid=$(RESULT_DIR)/$*.mzid -mzmlOut=$@ $(RESULT_DIR)/$<
 
