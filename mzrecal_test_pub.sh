@@ -10,6 +10,16 @@ COMET="${TOOLS_DIR}/comet.2019015.linux.exe"
 # Comet expectation value limit that we accept
 EXPECT=0.01
 
+# Tuning parameters
+
+PPMERR=10
+CALPEAKS=20
+# for PPMERR in 3 5 7 10 15 20 30 50
+#   do
+#     for CALPEAKS in 3 4 5 6 8
+#     do
+
+
 # Avoid locale errors in idconvert
 export LC_ALL=C
 
@@ -28,8 +38,7 @@ for E in ${RM_EXT}; do rm -f "${DATA_DIR}/${FN_BASE}${E}"; done
 echo "Input file ${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet "
-echo $T "${COMET}" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet_${FN_BASE}.params" "${DATA_DIR}/${FN_BASE}.mzML"
-$T "${COMET}" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet_${FN_BASE}.params" "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${COMET}" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo "Converting to .mzid "
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}.pep.xml" >/dev/null 2>/dev/null
@@ -39,19 +48,19 @@ grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzi
 
 echo -n "Recalibration "
 # $T "${TOOLS_DIR}/mzrecal" -empty-non-calibrated -mzTry=12 -mzAccept=2 -minPeak 500 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -minPeak 500 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
+#$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -mzTry=${PPMERR} -calpeaks=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet on recalibrated output "
-$T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${FN_BASE}.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"
+$T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"
 
 echo "Converting to .mzid  "
-echo "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}-recal.pep.xml"
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}-recal.pep.xml" >/dev/null 2>/dev/null
 
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-plot.R -e "${EXPECT}"  -m 12 "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+./plot.R -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 FN_BASE=${FN2}
 
@@ -64,7 +73,7 @@ for E in ${RM_EXT}; do rm -f "${DATA_DIR}/${FN_BASE}${E}"; done
 echo "Input file ${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet "
-$T "${COMET}" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet_${FN_BASE}.params" "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${COMET}" "-D${DATA_DIR}/${FASTA}" "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo "Converting to .mzid "
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}.pep.xml" >/dev/null 2>/dev/null
@@ -74,10 +83,11 @@ grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzi
 
 echo -n "Recalibration "
 # $T "${TOOLS_DIR}/mzrecal" -empty-non-calibrated -mzTry=15 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
+#$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -mzTry=${PPMERR} -calpeaks=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet on recalibrated output "
-$T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${FN_BASE}.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"
+$T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"
 
 echo "Converting to .mzid "
 "${TOOLS_DIR}/idconvert" -o "${DATA_DIR}" "${DATA_DIR}/${FN_BASE}-recal.pep.xml" >/dev/null 2>/dev/null
@@ -85,5 +95,9 @@ echo "Converting to .mzid "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-plot.R -e "${EXPECT}" -m 5 "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
+montage "${DATA_DIR}/${FN2}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" "${DATA_DIR}/${FN1}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined-${CALPEAKS}-${PPMERR}.png"
+
+# done
+# done
