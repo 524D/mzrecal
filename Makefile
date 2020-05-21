@@ -35,6 +35,7 @@ PEPS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.pep.xml))
 RECALPEPS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-recal.pep.xml))
 MZMLSLN = $(addprefix $(RESULT_DIR)/,$(MZMLS))
 PLOTS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.png))
+TXTSCORE = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.txt))
 
 INTERMEDIATES = $(MZMLSLN) $(PEPS) $(RECALPEPS) $(RECALS) \
  $(PEPS:.pep.xml=.mzid) $(RECALPEPS.pep.xml=.mzid) \
@@ -45,7 +46,7 @@ all: dirs $(RECALS) $(PLOTS)
 
 # To remove generated files
 clean:
-	rm -f $(RECALS) $(PLOTS) $(INTERMEDIATES)
+	rm -f $(RECALS) $(PLOTS) $(TXTSCORE) $(INTERMEDIATES)
 
 # Prevent deletion of intermediate files
 .SECONDARY: $(INTERMEDIATES)
