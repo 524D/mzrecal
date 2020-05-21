@@ -81,11 +81,7 @@ recalibration parameters.
 # Results
 Recalibration affects the MS1 spectra as well as the precursor masses of the
 MS2 spectra. Search engines commonly report the difference between theoretical
-mass and measured mass for identified peptides. The picture below shows a
-histogram of these mass differences, both before and after recalibration.
-Note that the number of identified peptides is lower for the recalibrated 
-result. The reason is that we used the option -empty-non-calibrated, causing
-MS2 spectra for which the precursor could not be recalibrated to be dropped.
+mass and measured mass for identified peptides.
 ![ppm-histogram](./ppmerr.png)
 
 # Go packages for mzML and mzIdentML
