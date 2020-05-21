@@ -3,24 +3,23 @@ mzrecal can be used to recalibrate mass spectrometry data in mzML format.
 
 Check section [Usage](#usage) for a more complete description.
 
+# Running mzRecal
+Ready-to-run executables of mzRecal can be downloaded from https://github.com/524D/mzrecal/releases.
+These executables have no external dependencies.
+
 # Compiling
 The core of the program is written in [Go](https://golang.org/). A relatively
 small part is written in the C language, this is required to access the GSL
 library which is used to compute the recalibration parameters.
 
-On Ubuntu 18.04, to install the prerequisites and download/build the code:
+On Ubuntu 20.04, to install the prerequisites and download/build the code:
 
 ```
-sudo apt install golang gcc libgsl-dev
+sudo apt install golang gcc libgsl-dev git
 go get -ldflags '-extldflags "-static"' github.com/524D/mzrecal
 ```
 
 The resulting executable program can then be found at `~/go/bin/mzrecal`.
-
-A Docker image can be build by running the script build-docker.sh
-
-A Makefile and several test scripts are present to test the performance of
-mzrecal.
 
 # Input and output
 mzrecal uses file formats specified by the Proteomics Standards Initiative 
