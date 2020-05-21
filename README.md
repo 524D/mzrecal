@@ -4,8 +4,7 @@ mzrecal can be used to recalibrate mass spectrometry data in mzML format.
 Check section [Usage](#usage) for a more complete description.
 
 # Running mzRecal
-Ready-to-run executables of mzRecal can be downloaded from https://github.com/524D/mzrecal/releases.
-These executables have no external dependencies.
+Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from https://github.com/524D/mzrecal/releases. These executables have no external dependencies.
 
 # Compiling
 The core of the program is written in [Go](https://golang.org/). A relatively
