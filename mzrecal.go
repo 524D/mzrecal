@@ -810,6 +810,9 @@ func initRtMs1(mzML mzml.MzML) (rtSpecs, error) {
 			rtOfMs1Specs = append(rtOfMs1Specs, rtOfSpec)
 		}
 	}
+	if len(rtOfMs1Specs) == 0 {
+		return nil, fmt.Errorf("No MS1 spectra found, calibration not possible")
+	}
 	sort.Sort(rtOfMs1Specs)
 
 	return rtOfMs1Specs, nil
