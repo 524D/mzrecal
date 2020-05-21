@@ -223,32 +223,6 @@ var aaMass = map[rune]float64{
 	'Y': 163.0633285,
 }
 
-// The following are needed for sorting []calibrant on mass and retentionTime
-// the mass field.
-type byMz []chargedCalibrant
-
-func (a byMz) Len() int           { return len(a) }
-func (a byMz) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byMz) Less(i, j int) bool { return a[i].mz < a[j].mz }
-
-type byRetention []identifiedCalibrant
-
-func (a byRetention) Len() int           { return len(a) }
-func (a byRetention) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byRetention) Less(i, j int) bool { return a[i].retentionTime < a[j].retentionTime }
-
-type peaksByMass []mzml.Peak
-
-func (a peaksByMass) Len() int           { return len(a) }
-func (a peaksByMass) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a peaksByMass) Less(i, j int) bool { return a[i].Mz < a[j].Mz }
-
-type peaksByIntensity []mzml.Peak
-
-func (a peaksByIntensity) Len() int           { return len(a) }
-func (a peaksByIntensity) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a peaksByIntensity) Less(i, j int) bool { return a[i].Intens > a[j].Intens }
-
 // Parse string like "-12:6" into 2 values, -12 and 6
 // Parameters min and max are the "default" min/max values,
 // when a value is not specified (e.g. "-12:"), the defauls is assigned
@@ -376,7 +350,8 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 		log.Print("No identified spectra will be used as calibrant. Is the specified scorefilter applicable for this file?")
 	}
 	cals = append(cals, fixedCalibrants...)
-	sort.Sort(byRetention(cals))
+	sort.Slice(cals,
+		func(i, j int) bool { return cals[i].retentionTime < cals[j].retentionTime })
 
 	return cals, nil
 }
@@ -409,7 +384,8 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []identifiedCalibrant) ([]i
 func mergeSameMzCals(chargedCalibrants []chargedCalibrant) []calibrant {
 	mcals := make([]calibrant, 0, len(chargedCalibrants))
 	// sort calibrants by mass
-	sort.Sort(byMz(chargedCalibrants))
+	sort.Slice(chargedCalibrants,
+		func(i, j int) bool { return chargedCalibrants[i].mz < chargedCalibrants[j].mz })
 
 	prevMz := float64(-1)
 	for _, cal := range chargedCalibrants {
@@ -640,7 +616,8 @@ func filterPeaks(peaks []mzml.Peak, par params, c int) []mzml.Peak {
 	peaksNew := make([]mzml.Peak, len(peaks))
 	copy(peaksNew, peaks)
 	// sort by intensity, so the most intense peaks are at the front
-	sort.Sort(peaksByIntensity(peaksNew))
+	sort.Slice(peaksNew,
+		func(i, j int) bool { return peaksNew[i].Intens > peaksNew[j].Intens })
 	// Should we filter on number of potential calibrants?
 	if *par.calPeaks > 0 {
 		// The number of peaks to consider is:
@@ -668,7 +645,8 @@ func calibrantsMatchPeaks(peaks []mzml.Peak, calibrants []calibrant,
 	peaks = filterPeaks(peaks, par, len(calibrants))
 
 	// Sort peaks by mass, so we can find matching masses quickly
-	sort.Sort(peaksByMass(peaks))
+	sort.Slice(peaks,
+		func(i, j int) bool { return peaks[i].Mz < peaks[j].Mz })
 
 	// For each potential calibrant, find highest peak within mz window
 	for _, calibrant := range calibrants {
