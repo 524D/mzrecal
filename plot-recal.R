@@ -14,6 +14,11 @@ getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
 {
     mzid <- readMzIdData(fileName)
     mzidGood=subset(mzid, Comet.expectation.value < cometExpLim)
+
+    # Only keep columns that we want
+    keeps <- c( "experimentalMassToCharge", "calculatedMassToCharge")
+    mzidGood=mzidGood[keeps]
+
     mzidGood$mzErr <- mzidGood$experimentalMassToCharge - mzidGood$calculatedMassToCharge
 
     # FIXME: Handle the case where precursor is off by one (abs(mzError)= 0.5 or 0.3333 or ...)
@@ -38,9 +43,10 @@ getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
 
 # If running in RStudio, supply "debug" command line args
 if (Sys.getenv("RSTUDIO") == "1") {
-    options=list("ppmerr" = 12, "exp" = 0.01, "nolegend" = false)
-    args=c("/home/robm/data/mzrecal-application-note/120118ry_201B7-32_2_2-120118ry007.mzid",
-       "/home/robm/data/mzrecal-application-note/120118ry_201B7-32_2_2-120118ry007-recal.mzid")
+    options=list("ppmerr" = 10, "exp" = 0.01, "nolegend" = FALSE, "outfile" = "")
+
+    args=c("/home/robm/results/PXD000153/20011221_04_BarH_IM2_10to11.mzid",
+       "/home/robm/results/PXD000153/20011221_04_BarH_IM2_10to11-recal.mzid")
     opt = list("options" = options, "args" = args)
 } else {
     # Parse command line arguments
@@ -115,9 +121,9 @@ txt2 = paste("n=", classCount[1], sep="")
 massScaleTxt <- "mass error (ppm)";
 # Position of labels with PSMs
 x1<- 7;
-y1<- 0.3;
+y1<- 0.1;
 x2<- 6.5;
-y2<- 0.3;
+y2<- 0.1;
 # Special case for files used in publication
 if (str_detect(outputFnBase, "120118ry_201B7-32_2_2-120118ry007")) {
 x1<- 7.1;
