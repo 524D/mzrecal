@@ -204,3 +204,5 @@ USAGE EXAMPLES:
 The recalibration algorithm was originally developed by Magnus Palmblad (see also 
 [recal2](http://www.ms-utils.org/recal2.html)).
 
+# Funding
+mzRecal was made possible in part due to funding from the ELIXIR Implementation Study "Crowd-sourcing the annotation of public proteomics datasets to improve data reusability".
