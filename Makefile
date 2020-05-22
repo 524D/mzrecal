@@ -38,8 +38,8 @@ PLOTS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.png))
 TXTSCORE = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.txt))
 
 INTERMEDIATES = $(MZMLSLN) $(PEPS) $(RECALPEPS) $(RECALS) \
- $(PEPS:.pep.xml=.mzid) $(RECALPEPS.pep.xml=.mzid) \
- $(RECALPEPS.pep.xml=-recal.mzid) $(RECALS:-recal.mzML=-recal.json)
+ $(PEPS:.pep.xml=.mzid) $(RECALPEPS:.pep.xml=.mzid) \
+ $(RECALS:-recal.mzML=-recal.json)
 
 # Main target
 all: dirs $(RECALS) $(PLOTS)
