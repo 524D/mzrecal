@@ -120,9 +120,9 @@ classCount <- length(which(mzidGood$class == classNames[2]))
 txt2 = paste("n=", classCount[1], sep="")
 massScaleTxt <- "mass error (ppm)";
 # Position of labels with PSMs
-x1<- 7;
+x1<- maxPpmErr*0.7;
 y1<- 0.1;
-x2<- 6.5;
+x2<- maxPpmErr*0.65;
 y2<- 0.1;
 # Special case for files used in publication
 if (str_detect(outputFnBase, "120118ry_201B7-32_2_2-120118ry007")) {
@@ -152,6 +152,7 @@ g <- ggplot(mzidGood, aes(x=calculatedMassToCharge, y=ppmErr, colour = class))+
               legend.title=element_blank(),
               legend.position = myLegendPos) +
         scale_x_continuous(name="m/z", limits=c(270, 1250)) +
+        scale_y_continuous(limits=c(-maxPpmErr, maxPpmErr)) +
         scale_color_manual(values = colors) +
         geom_smooth(method = "lm")
 
@@ -162,7 +163,7 @@ gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
 #              axis.text.y=element_blank(),    # Only for right side picture in paper (maybe)
 #              axis.ticks.y=element_blank(), # Only for right side picture in paper (maybe)
               text=element_text(size=12, family="sans")) +
-        scale_x_continuous(name=massScaleTxt) +
+        scale_x_continuous(name=massScaleTxt, limits=c(-maxPpmErr, maxPpmErr)) +
         scale_color_manual(values = colors) +
 #        geom_label(aes(x = x1, y = x1, label = txt1, color=colors[1]), fill = "blue") +
         annotate(geom="text", x1, y2, label=txt1, color=colors[1]) +
