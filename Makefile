@@ -120,4 +120,4 @@ $(RESULT_DIR)/%-$(PPM2)ppm.mzid: %.mzML
 
 # Plot small windows uncalibrated and recalibrated to .png
 $(RESULT_DIR)/%.png: $(RESULT_DIR)/%-$(PPM2)ppm.mzid $(RESULT_DIR)/%-recal.mzid 
-	$(PLOT) $(PLOT_FLAGS) $(RESULT_DIR)/$*-$(PPM2)ppm.mzid $(RESULT_DIR)/$*-recal.mzid
+	$(PLOT) $(PLOT_FLAGS) --name=$* $(RESULT_DIR)/$*-$(PPM2)ppm.mzid $(RESULT_DIR)/$*-recal.mzid

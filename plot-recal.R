@@ -7,6 +7,7 @@ suppressPackageStartupMessages(library(futile.logger))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(MSnbase))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(grid))
 suppressPackageStartupMessages(library(gridExtra))
 
 
@@ -58,7 +59,9 @@ if (Sys.getenv("RSTUDIO") == "1") {
     make_option(c("-o", "--outfile"), default = "", action='store',
                 help = "Output filename [default first input filename]. The file extention is not used."),
     make_option(c("-L", "--nolegend"), default = FALSE, action='store_true',
-                help = "If set, no legend is shown.")
+                help = "If set, no legend is shown."),
+    make_option(c("-n", "--name"), default = "", action='store',
+                help = "Name of data, printed at top of picture.")
 
     )
 
@@ -170,7 +173,8 @@ gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
         annotate(geom="text", x2, y2, label=txt2, color=colors[2])
 
 #grid.arrange(gd, g, widths = c(1, 2), ncol=2)
-p <- arrangeGrob(gd, g, widths = c(1, 2), ncol=2)
+p <- arrangeGrob(gd, g, widths = c(1, 2), ncol=2,
+    top = textGrob(opt$options$name,gp=gpar(fontsize=12)))
 
 plotFile <- paste(outputFnBase, ".png", sep="")
 
