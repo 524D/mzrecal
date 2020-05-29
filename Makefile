@@ -34,6 +34,7 @@ FASTA ?= $(wildcard $(DATA_DIR)/*.fasta)
 TOOLS_DIR=$(HOME)/tools
 SEARCHENGINE=$(TOOLS_DIR)/comet.2019015.linux.exe
 IDCONVERT=$(TOOLS_DIR)/idconvert
+MSCONVERT=$(TOOLS_DIR)/msconvert
 MSCONVERT_DOCKER=docker run -it --rm -e WINEDEBUG=-all -v $(DATA_DIR):/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --zlib --filter "peakPicking vendor"
 MZRECAL=$(TOOLS_DIR)/mzrecal
 MZRECAL_FLAGS=-mzTry=$(PPM1)
@@ -92,8 +93,10 @@ $(RESULT_DIR)/%-$(PPM1)ppm.mzid: %.mzML
 
 # Recalibrate
 $(RESULT_DIR)/%-recal.mzML: %.mzML $(RESULT_DIR)/%-$(PPM1)ppm.mzid $(MZRECAL)
+	$(eval TMP := $(shell mktemp -d))
 	$(MZRECAL) $(MZRECAL_FLAGS) -mzid=$(RESULT_DIR)/$*-$(PPM1)ppm.mzid \
-	-mzmlOut=$@ -cal=$(RESULT_DIR)/$*-recal.json $<
+	-mzmlOut=$(TMP)/$*-recal.mzML -cal=$(RESULT_DIR)/$*-recal.json $<
+	$(MSCONVERT) -z $(TMP)/$*-recal.mzML -o $(RESULT_DIR)
 
 # Search recalibrated with small mass window
 $(RESULT_DIR)/%-recal.mzid: $(RESULT_DIR)/%-recal.mzML
