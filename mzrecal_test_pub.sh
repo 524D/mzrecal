@@ -60,7 +60,8 @@ echo "Converting to .mzid  "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-./plot.R -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" \
+   "--name=TOF (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 FN_BASE=${FN2}
 
@@ -95,7 +96,8 @@ echo "Converting to .mzid "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" \
+   "--name=Orbitrap (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 montage "${DATA_DIR}/${FN2}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" "${DATA_DIR}/${FN1}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined-${CALPEAKS}-${PPMERR}.png"
 
