@@ -129,16 +129,16 @@ x2<- maxPpmErr*0.65;
 y2<- 0.1;
 # Special case for files used in publication
 if (str_detect(outputFnBase, "120118ry_201B7-32_2_2-120118ry007")) {
-x1<- 7.1;
+x1<- -7.1;
 y1<- 0.12;
-x2<- -2.5;
+x2<- 2.5;
 y2<- 0.12;
 massScaleTxt <- "";
 }
 if (str_detect(outputFnBase, "GSC11_24h_R1")) {
-x1<- -2.0;
+x1<- 2.0;
 y1<- 0.3;
-x2<- 2.0;
+x2<- -2.0;
 y2<- 0.3;
 }
 
