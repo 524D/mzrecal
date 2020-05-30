@@ -14,7 +14,10 @@ suppressPackageStartupMessages(library(gridExtra))
 getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
 {
     mzid <- readMzIdData(fileName)
-    mzidGood=subset(mzid, Comet.expectation.value < cometExpLim)
+    mzidGood <- subset(mzid, Comet.expectation.value < cometExpLim)
+
+    psms <- nrow(mzidGood)
+
 
     # Only keep columns that we want
     keeps <- c( "experimentalMassToCharge", "calculatedMassToCharge")
@@ -37,7 +40,9 @@ getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
     mzidGoodX=subset(mzidGood, (1000000.0*abs(mzErr)/calculatedMassToCharge) < maxPpmErr)
     mzidGoodX$ppmErr <- 1000000.0* mzidGoodX$mzErr / mzidGoodX$calculatedMassToCharge
     mzidGoodX$class=className
-    mzidGoodX
+
+    mzIdVals <- list("psms" = psms, "mzidGoodX" = mzidGoodX)
+    mzIdVals
 }
 
 ####################################################################################
@@ -82,22 +87,24 @@ colors<-c("#C00000", "#10D010")
 classNames<-c("original","recalibrated")
 maxPpmErr = opt$options$ppmerr
 
-mzidGood <- getMzId(opt$args[1], classNames[1], opt$options$exp, maxPpmErr)
+mzIdVals <- getMzId(opt$args[1], classNames[1], opt$options$exp, maxPpmErr)
+mzidGood <- mzIdVals$mzidGood
+psms <- mzIdVals$psms
+
 scores <- data.frame("Class" = classNames[[1]],
                      "Mean" = mean(mzidGood$ppmErr),
                      "SD" = sd(mzidGood$ppmErr),
                      "Count" = length(mzidGood$ppmErr))
 
 for (i in c(2:length(opt$args))) {
-    mzidGoodX <- getMzId(opt$args[i], classNames[i], opt$options$exp, maxPpmErr)
+    mzIdVals <- getMzId(opt$args[i], classNames[i], opt$options$exp, maxPpmErr)
+    psms <- c(psms, mzIdVals$psms)
+    mzidGood <- rbind(mzidGood, mzIdVals$mzidGood)
     scoresX <- data.frame("Class" = classNames[[i]],
-                         "Mean" = mean(mzidGoodX$ppmErr),
-                         "SD" = sd(mzidGoodX$ppmErr),
-                         "Count" = length(mzidGoodX$ppmErr))
+                         "Mean" = mean( mzIdVals$mzidGood$ppmErr),
+                         "SD" = sd( mzIdVals$mzidGood$ppmErr),
+                         "Count" = length( mzIdVals$mzidGood$ppmErr))
     scores <- rbind(scores, scoresX)
-    
-    mzidGood <- rbind(mzidGood, mzidGoodX)
-
 }
 
 # Create a text file with some numbers that indicate how well the recalibration worked
@@ -115,12 +122,9 @@ set.seed(42)
 rows <- sample(nrow(mzidGood))
 mzidGood <- mzidGood[rows, ]
 
-
 # Make labels with number of PSMs in each class
-classCount <- length(which(mzidGood$class == classNames[1]))
-txt1 = paste("n=", classCount[1], sep="")
-classCount <- length(which(mzidGood$class == classNames[2]))
-txt2 = paste("n=", classCount[1], sep="")
+txt1 = paste("n=", psms[1], sep="")
+txt2 = paste("n=", psms[2], sep="")
 massScaleTxt <- "mass error (ppm)";
 # Position of labels with PSMs
 x1<- maxPpmErr*0.7;
