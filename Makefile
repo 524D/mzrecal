@@ -29,6 +29,7 @@ RESULT_DIR=$(HOME)/results/$(DATA_BASE)
 PPM1=10
 # m/z error to compare recalibrated with original
 PPM2=5
+KEEP_PEPXML = yes
 PARAM_FILE ?= $(wildcard $(DATA_DIR)/*.params)
 FASTA ?= $(wildcard $(DATA_DIR)/*.fasta)
 TOOLS_DIR=$(HOME)/tools
@@ -50,11 +51,17 @@ RECALS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-recal.mzML))
 PEPS1 = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-$(PPM1)ppm.mzid))
 PEPS2 = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-$(PPM2)ppm.mzid))
 RECALPEPS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-recal.mzid))
+ifdef KEEP_PEPXML
+PEPXMLS1 = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-$(PPM1)ppm.pep.xml))
+PEPXMLS2 = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-$(PPM2)ppm.pep.xml))
+RECALPEPXMLS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=-recal.pep.xml))
+endif
 MZMLSLN = $(addprefix $(RESULT_DIR)/,$(MZMLS))
 PLOTS = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.png))
 TXTSCORE = $(addprefix $(RESULT_DIR)/,$(MZMLS:.mzML=.txt))
 
 INTERMEDIATES = $(MZMLSLN) $(PEPS1) $(PEPS2) $(RECALPEPS) $(RECALS) \
+ $(PEPXMLS1) $(PEPXMLS2) $(RECALPEPXMLS) \
  $(RECALS:-recal.mzML=-recal.json)
 
 # Main target
@@ -87,8 +94,10 @@ $(RESULT_DIR)/%-$(PPM1)ppm.mzid: %.mzML
 	# Create updated comet parameter file with desired PPM error
 	sed -E "s/^peptide_mass_tolerance *=.*/peptide_mass_tolerance = $(PPM1)/" ${PARAM_FILE} > $(TMP)/comet.params 
 	$(SEARCHENGINE) -D$(FASTA) -P$(TMP)/comet.params $(TMP)/$*-$(PPM1)ppm.mzML
-	$(IDCONVERT) -o $(TMP)  $(TMP)/$*-$(PPM1)ppm.pep.xml
-	mv $(TMP)/*-$(PPM1)ppm.mzid $(RESULT_DIR)
+	$(IDCONVERT) -o $(RESULT_DIR)  $(TMP)/$*-$(PPM1)ppm.pep.xml
+ifdef KEEP_PEPXML
+	mv $(TMP)/$*-$(PPM1)ppm.pep.xml $(RESULT_DIR)
+endif
 	rm -rf $(TMP)
 
 # Recalibrate
@@ -104,8 +113,10 @@ $(RESULT_DIR)/%-recal.mzid: $(RESULT_DIR)/%-recal.mzML
 	ln -sf $< $(TMP)/
 	sed -E "s/^peptide_mass_tolerance *=.*/peptide_mass_tolerance = $(PPM2)/" ${PARAM_FILE} > $(TMP)/comet.params 
 	$(SEARCHENGINE) -D$(FASTA) -P$(TMP)/comet.params $(TMP)/$*-recal.mzML
-	$(IDCONVERT) -o $(TMP)  $(TMP)/$*-recal.pep.xml
-	mv $(TMP)/*-recal.mzid $(RESULT_DIR)
+	$(IDCONVERT) -o $(RESULT_DIR)  $(TMP)/$*-recal.pep.xml
+ifdef KEEP_PEPXML
+	mv $(TMP)/$*-recal.pep.xml $(RESULT_DIR)
+endif
 	rm -rf $(TMP)
 
 # Search uncalibrated with small mass window
@@ -114,10 +125,13 @@ $(RESULT_DIR)/%-$(PPM2)ppm.mzid: %.mzML
 	ln -sf $(DATA_DIR)/$< $(TMP)/$*-$(PPM2)ppm.mzML
 	sed -E "s/^peptide_mass_tolerance *=.*/peptide_mass_tolerance = $(PPM2)/" ${PARAM_FILE} > $(TMP)/comet.params 
 	$(SEARCHENGINE) -D$(FASTA) -P$(TMP)/comet.params $(TMP)/$*-$(PPM2)ppm.mzML
-	$(IDCONVERT) -o $(TMP)  $(TMP)/$*-$(PPM2)ppm.pep.xml
-	mv $(TMP)/*-$(PPM2)ppm.mzid $(RESULT_DIR)
+	$(IDCONVERT) -o $(RESULT_DIR)  $(TMP)/$*-$(PPM2)ppm.pep.xml
+ifdef KEEP_PEPXML
+	mv $(TMP)/$*-$(PPM2)ppm.pep.xml $(RESULT_DIR)
+endif
 	rm -rf $(TMP)
 
 # Plot small windows uncalibrated and recalibrated to .png
 $(RESULT_DIR)/%.png: $(RESULT_DIR)/%-$(PPM2)ppm.mzid $(RESULT_DIR)/%-recal.mzid 
-	$(PLOT) $(PLOT_FLAGS) --name=$* $(RESULT_DIR)/$*-$(PPM2)ppm.mzid $(RESULT_DIR)/$*-recal.mzid
+	$(PLOT) $(PLOT_FLAGS) --name=$* $(RESULT_DIR)/$*-$(PPM2)ppm.mzid $(RESULT_DIR)/$*-recal.mzid \
+	--outfile=${RESULT_DIR}/$* 
