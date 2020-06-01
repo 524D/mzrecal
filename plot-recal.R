@@ -140,10 +140,10 @@ y2<- 0.12;
 massScaleTxt <- "";
 }
 if (str_detect(outputFnBase, "GSC11_24h_R1")) {
-x1<- 2.0;
-y1<- 0.3;
-x2<- -2.0;
-y2<- 0.3;
+x1<- 1.25;
+y1<- 0.45;
+x2<- -1.25;
+y2<- 0.45;
 }
 
 myLegendPos <- "none";

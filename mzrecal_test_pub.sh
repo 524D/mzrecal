@@ -12,7 +12,6 @@ EXPECT=0.01
 
 # Tuning parameters
 
-PPMERR=10
 CALPEAKS=20
 # for PPMERR in 3 5 7 10 15 20 30 50
 #   do
@@ -28,6 +27,7 @@ export LC_ALL=C
 RM_EXT='.pep.xml .mzid -recal.mzML -recal.mzid'
 
 FN_BASE=${FN1}
+PPMERR=10
 
 # Convert raw data to mzML
 # docker run -it --rm -e WINEDEBUG=-all -v ${DATA_DIR}:/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --zlib --filter "peakPicking vendor" /data/${FN1}.wiff
@@ -60,10 +60,9 @@ echo "Converting to .mzid  "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" \
-   "--name=TOF (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 FN_BASE=${FN2}
+PPMERR=5
 
 # Convert raw data to mzML
 # docker run -it --rm -e WINEDEBUG=-all -v ${DATA_DIR}:/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --zlib --filter "peakPicking vendor" /data/${FN1}.raw
@@ -96,10 +95,24 @@ echo "Converting to .mzid "
 echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-recal.mzid" | wc -l
 
-"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}-calpeaks${CALPEAKS}-ppmerr${PPMERR}" \
-   "--name=Orbitrap (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
-montage "${DATA_DIR}/${FN2}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" "${DATA_DIR}/${FN1}-calpeaks${CALPEAKS}-ppmerr${PPMERR}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined-${CALPEAKS}-${PPMERR}.png"
+FN_BASE=${FN1}
+PPMERR=10
+"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}" \
+   "--name=TOF data (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+
+FN_BASE=${FN2}
+PPMERR=5
+"${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}" \
+   "--name=Orbitrap data (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+
+montage "${DATA_DIR}/${FN2}.png" "${DATA_DIR}/${FN1}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined.png"
+
+# Convert to 350 dpi (or 1200 for line art) .jpg, .gif, .tif or .eps
+# All figures should be formatted to fit into, or be
+# reduced to, a single (86 mm) or double (178 mm) column width.
+# 178/25.4*350=2452.755905512
+convert "${DATA_DIR}/combined.png" -resize 2452\> "./latexdoc/images/combined.jpg"
 
 # done
 # done
