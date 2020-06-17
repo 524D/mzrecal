@@ -7,7 +7,7 @@
 #include <gsl/gsl_multifit_nlin.h>
 #include "recal.h"
 
-// Maximum number of iterations fro the FDF solver
+// Maximum number of iterations for the FDF solver
 #define MAX_FDF_SOLVER_ITER 500
 #define EPS_ABS 1e-9
 #define EPS_REL 1e-9
@@ -33,7 +33,7 @@ double mz_recalX(double mz_meas, cal_params_t *p)
         mz_calib = (p->cal_pars[1])/((1/mz_meas)-(p->cal_pars[0]));
         break;
     case CALIB_TOF:
-        mz_calib = mz_recal_poly_n(mz_meas, p, 2);
+        mz_calib = p->cal_pars[2]*sqrt(mz_meas) + p->cal_pars[1]*mz_meas + p->cal_pars[0];
         break;
     case CALIB_ORBITRAP: {
         // mz_calib = A/((f-B)^2) =
@@ -121,9 +121,18 @@ static int calib_f(const gsl_vector *x, void *params, gsl_vector *f)
         }
         break;
     }
-    case CALIB_TOF:
-        calib_f_poly_n(x, recal_data_p, f, 2);
+    case CALIB_TOF: {
+        double a = gsl_vector_get (x, 2);
+        double b = gsl_vector_get (x, 1);
+        double c = gsl_vector_get (x, 0);
+        double mz_calib;
+        for (i=0;i<n_calibrants;i++) {
+            double mz_meas = calibrants[i].mz_meas;
+            mz_calib = a*sqrt(mz_meas) + b*mz_meas + c;
+            gsl_vector_set (f, i, (mz_calib-calibrants[i].mz_calc)); // absolute or relative error?
+        }
         break;
+    }
     case CALIB_ORBITRAP: {
         double a = gsl_vector_get (x, 1);
         double b = gsl_vector_get (x, 0);
@@ -205,7 +214,7 @@ static int calib_df(const gsl_vector *x, void *params, gsl_matrix *J)
             double mz_meas = calibrants[i].mz_meas;
             gsl_matrix_set(J, i, 0, 1);
             gsl_matrix_set(J, i, 1, mz_meas);
-            gsl_matrix_set(J, i, 2, mz_meas * mz_meas);
+            gsl_matrix_set(J, i, 2, sqrt(mz_meas));
         }
         break;
     case CALIB_ORBITRAP:
