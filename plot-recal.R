@@ -83,7 +83,8 @@ if (opt$options$outfile == "") {
 }
 
 # Test colors with: https://www.color-blindness.com/coblis-color-blindness-simulator/
-colors<-c("#C00000", "#10D010")
+# Use magenta instead of red, that's better according to some sources
+colors<-c("#F000A0", "#00B000")
 classNames<-c("original","recalibrated")
 maxPpmErr = opt$options$ppmerr
 
