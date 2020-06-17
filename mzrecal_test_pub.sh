@@ -109,10 +109,19 @@ PPMERR=5
 montage "${DATA_DIR}/${FN2}.png" "${DATA_DIR}/${FN1}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined.png"
 
 # Convert to 350 dpi (or 1200 for line art) .jpg, .gif, .tif or .eps
+# -> jpg: will not be accepted according to Oxford guidelines
+# -> gif, tif: does not work in latexpdf converter,
+#              including size (natwidth=2452,natheight=1226) gets a bit further
+#              but still does not work
+# -> eps: too many elements to use vector graphics
+# -> Use png, works with latexpdf only
 # All figures should be formatted to fit into, or be
 # reduced to, a single (86 mm) or double (178 mm) column width.
 # 178/25.4*350=2452.755905512
-convert "${DATA_DIR}/combined.png" -resize 2452\> "./latexdoc/images/combined.jpg"
+# -undercolor '#FFFFFFFF' 
+convert "${DATA_DIR}/combined.png" -resize 2452\> -fill black  -pointsize 36 \
+-annotate +120+86 'A' -annotate +460+86 'B' -annotate +1342+86 'C' -annotate +1685+86 'D' \
+"${HOME}/Documents/mzRecal/images/combined.png"
 
 # done
 # done
