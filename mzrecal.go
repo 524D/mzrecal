@@ -1,4 +1,5 @@
-// Copyright 2018,2019 Rob Marissen. All rights reserved.
+// Copyright 2018,2019,2020 Rob Marissen.
+// All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1161,7 +1162,7 @@ for the choosen recalibration function plus one. In any other case, is the
 specified number is too low for the calibration function, it is increased to
 the minimum needed value.`)
 	par.calPeaks = flag.Int("calpeaks",
-		5,
+		10,
 		`only the topmost (<calpeaks> * <number of potential calibrants>) are
 considered for computing the recalibration. <1 means all peaks.`)
 	par.minPeak = flag.Float64("minPeak",
