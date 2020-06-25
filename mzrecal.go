@@ -534,6 +534,13 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 	numSpecs := mzML.NumSpecs()
 
 	for i := 0; i < numSpecs; i++ {
+		centroid, err := mzML.Centroid(i)
+		if err != nil {
+			return recal, err
+		}
+		if !centroid {
+			return recal, errors.New(`input mzML file must contain centroid data, not profile data`)
+		}
 		msLevel, err := mzML.MSLevel(i)
 		if err != nil {
 			return recal, err
