@@ -94,7 +94,7 @@ be split into a separate module at a later time.
 
 The following is printed by running mzrecal -help
 
-```
+```text
 USAGE:
   mzrecal [options] <mzMLfile>
 
@@ -104,14 +104,12 @@ USAGE:
 OPTIONS:
   -cal string
     	filename for output of computed calibration parameters
-    	
-  -calpeaks int
-    	only the topmost (<calpeaks> * <number of potential calibrants>) are
-    	considered for computing the recalibration. <1 means all peaks. (default 5)
+  -calmult int
+    	only the topmost (<calmult> * <number of potential calibrants>)
+    	peaks are considered for computing the recalibration. <1 means all peaks. (default 10)
   -charge string
     	charge range of calibrants, or the string "ident". If set to "ident",
-    	only the charge as found in the mzIdentMl file will be used for calibration.
-    	 (default "1:5")
+    	only the charge as found in the mzIdentMl file will be used for calibration. (default "1:5")
   -debug string
     	Print debug output for given spectrum range e.g. 3:6
   -empty-non-calibrated
@@ -121,49 +119,43 @@ OPTIONS:
     	function is determined from the instrument specified in the mzML file.
     	Valid function names:
     	    FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-          POLY<N>: Polynomial with degee <N> (range 1:5)
-          OFFSET: Constant m/z offset per spectrum.
-  -minPeak float
-    	minimum peak intensity to consider for computing the recalibration.
+    	    POLY<N>: Polynomial with degee <N> (range 1:5)
+    	    OFFSET: Constant m/z offset per spectrum.
   -mincals int
     	minimum number of calibrants a spectrum should have to be recalibrated.
     	If 0, the minimum number of calibrants is set to the smallest number needed
     	for the choosen recalibration function plus one. In any other case, is the
     	specified number is too low for the calibration function, it is increased to
     	the minimum needed value.
-  -mzAccept float
-    	max mz error (ppm) for accepting a calibrant for calibration
-    	 (default 2)
-  -mzTry float
-    	max mz error (ppm) for trying to use calibrant for calibration
-    	 (default 10)
+  -minpeak float
+    	minimum peak intensity to consider for computing the recalibration.
   -mzid string
     	mzIdentMl filename
-    	
-  -mzmlOut string
-    	recalibrated mzML filename (only together with -recal)
-    	
+  -o string
+    	filename of recalibrated mzML
+  -ppmcal float
+    	max mz error (ppm) for accepting a calibrant for calibration (default 2)
+  -ppmuncal float
+    	max mz error (ppm) for trying to use calibrant for calibration (default 10)
   -rt string
-    	rt window (s)
-    	 (default "-10.0:10.0")
-  -scoreFilter string
+    	rt window (s) (default "-10.0:10.0")
+  -scorefilter string
     	filter for PSM scores to accept. Format:
     	<CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
     	When multiple score names/CV terms are specified, the first one on the list
     	that matches a score in the input file will be used.
     	TODO: The default contains reasonable values for some common search engines
     	and post-search scoring software:
-    	MS:1002257 (Comet:expectation value)
-    	MS:1001159 (SEQUEST:expectation value)
-    	MS:1002466 (PeptideShaker PSM score)
-    	 (default "MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)")
+    	  MS:1002257 (Comet:expectation value)
+    	  MS:1001159 (SEQUEST:expectation value)
+    	  MS:1002466 (PeptideShaker PSM score) (default "MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)")
   -stage int
     	0: do all calibration stages in one run
     	1: only compute recalibration parameters
     	2: perform recalibration using previously computer parameters
-    		NOTE: The mzML file that is produced after recalibration does not contain an
-    		index. If an index is required, we recommend post-processing the output file 
-    		with msconvert (http://proteowizard.sourceforge.net/download.html).
+    	NOTE: The mzML file that is produced after recalibration does not contain an
+    	      index. If an index is required, we recommend post-processing the output file 
+    	      with msconvert (http://proteowizard.sourceforge.net/download.html).
   -version
     	Show software version
 
@@ -181,24 +173,32 @@ BUILD-IN CALIBRANTS:
      cyclosiloxane12 (888.225496)
 
 EXECUTION STAGES:
-	Recalibration consists of 2 stages. By default they are executed consequtively,
-	but it is also possible to execute them seperately by specifying the -stage flag:
-	1) Computation of recalibration coefficients. The coefficients are stored
-		in a JSON file.
-		This stage reads an mzML file and mzID file, matches measured peaks to
-		computed m/z values and computes recalibration coefficents using a method
-		that is usefull for the instrument type. The instrument type (and other
-		relavant values) are determined from the CV terms in the input files.
-	2) Creating a recalibrated version of the MS file.
-		This stage reads the mzML file and JSON file with recalibration values,
-		computes recalibrated m/z values for all peaks in spectra for which
-		a valid recalibration was found, and writes a recalibrated mzML file.
+    Recalibration consists of 2 stages. By default they are executed consequtively,
+    but it is also possible to execute them seperately by specifying the -stage flag:
+    1) Computation of recalibration coefficients. The coefficients are stored
+        in a JSON file.
+        This stage reads an mzML file and mzID file, matches measured peaks to
+        computed m/z values and computes recalibration coefficents using a method
+        that is usefull for the instrument type. The instrument type (and other
+        relavant values) are determined from the CV terms in the input files.
+    2) Creating a recalibrated version of the MS file.
+        This stage reads the mzML file and JSON file with recalibration values,
+        computes recalibrated m/z values for all peaks in spectra for which
+        a valid recalibration was found, and writes a recalibrated mzML file.
 
 USAGE EXAMPLES:
   mzrecal BSA.mzML
-	 Read BSA.mzML and BSA.mzid, write recalibrated result to BSA-recal.mzML
-	 and write recalibration coefficents BSA-recal.json.
+    Recalibrate BSA.mzML using identifications in BSA.mzid, write recalibrated
+    result to BSA-recal.mzML and write recalibration coefficients BSA-recal.json.
+    Default parameters are used. 
 
+  mzrecal -ppmuncal 20 -ppmcal 1.5 BSA.mzML
+    Idem, but accept peptides with 20 ppm as potential calibrants, after
+    recalibration all accepted peptides must be within 1.5 ppm
+
+  mzrecal -calmult 20
+    Idem, but the number of peaks that are considered for matching are the
+    number of potential calibrants times 20
 ```
 
 # Acknowledgements
