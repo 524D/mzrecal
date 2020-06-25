@@ -47,9 +47,7 @@ echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
 echo -n "Recalibration "
-# $T "${TOOLS_DIR}/mzrecal" -empty-non-calibrated -mzTry=12 -mzAccept=2 -minPeak 500 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-#$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-$T "${TOOLS_DIR}/mzrecal" -mzTry=${PPMERR} -calpeaks=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -ppmuncal=${PPMERR} -calmult=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet on recalibrated output "
 $T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"
@@ -82,9 +80,7 @@ echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
 echo -n "Recalibration "
-# $T "${TOOLS_DIR}/mzrecal" -empty-non-calibrated -mzTry=15 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-#$T "${TOOLS_DIR}/mzrecal" -mzTry=12 -mzAccept=2 -scoreFilter="MS:1002257(0.0:${EXPECT})" "${DATA_DIR}/${FN_BASE}.mzML"
-$T "${TOOLS_DIR}/mzrecal" -mzTry=${PPMERR} -calpeaks=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -ppmuncal=${PPMERR} -calmult=${CALPEAKS} "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running comet on recalibrated output "
 $T "${COMET}" -D${DATA_DIR}/${FASTA} "-P${DATA_DIR}/comet_${PPMERR}ppm.params" "${DATA_DIR}/${FN_BASE}-recal.mzML"

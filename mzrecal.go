@@ -1067,10 +1067,8 @@ Type %s --help for usage
 
 func usage() {
 	progName := filepath.Base(os.Args[0])
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", progName)
 	fmt.Fprintf(os.Stderr,
-		`
-USAGE:
+		`USAGE:
   %s [options] <mzMLfile>
 
   This program can be used to recalibrate MS data in an mzML file
@@ -1095,32 +1093,32 @@ BUILD-IN CALIBRANTS:
 	fmt.Fprintf(os.Stderr,
 		`
 EXECUTION STAGES:
-	Recalibration consists of 2 stages. By default they are executed consequtively,
-	but it is also possible to execute them seperately by specifying the -stage flag:
-	1) Computation of recalibration coefficients. The coefficients are stored
-		in a JSON file.
-		This stage reads an mzML file and mzID file, matches measured peaks to
-		computed m/z values and computes recalibration coefficents using a method
-		that is usefull for the instrument type. The instrument type (and other
-		relavant values) are determined from the CV terms in the input files.
-	2) Creating a recalibrated version of the MS file.
-		This stage reads the mzML file and JSON file with recalibration values,
-		computes recalibrated m/z values for all peaks in spectra for which
-		a valid recalibration was found, and writes a recalibrated mzML file.
+    Recalibration consists of 2 stages. By default they are executed consequtively,
+    but it is also possible to execute them seperately by specifying the -stage flag:
+    1) Computation of recalibration coefficients. The coefficients are stored
+        in a JSON file.
+        This stage reads an mzML file and mzID file, matches measured peaks to
+        computed m/z values and computes recalibration coefficents using a method
+        that is usefull for the instrument type. The instrument type (and other
+        relavant values) are determined from the CV terms in the input files.
+    2) Creating a recalibrated version of the MS file.
+        This stage reads the mzML file and JSON file with recalibration values,
+        computes recalibrated m/z values for all peaks in spectra for which
+        a valid recalibration was found, and writes a recalibrated mzML file.
 
 USAGE EXAMPLES:
   %s BSA.mzML
-	 Read BSA.mzML and BSA.mzid, write recalibrated result to BSA-recal.mzML
-	 and write recalibration coefficents BSA-recal.json.
+    Recalibrate BSA.mzML using identifications in BSA.mzid, write recalibrated
+    result to BSA-recal.mzML and write recalibration coefficients BSA-recal.json.
+    Default parameters are used. 
 
-  %s -stage 1 -mzid BSA_comet.mzid -cal BSA_comet-recal.json BSA.mzML
-     Only perform first stage of the recalibration.
-     Read BSA.mzML and BSA_comet.mzid, write recalibration coefficents
-     to BSA_comet-recal.json.
+  %s -ppmuncal 20 -ppmcal 1.5 BSA.mzML
+    Idem, but accept peptides with 20 ppm as potential calibrants, after
+    recalibration all accepted peptides must be within 1.5 ppm
 
-  %s -stage 2 BSA.mzML
-     Read BSA.mzML and BSA-recal.json, write recalibrated output to
-     BSA-recal.mzML
+  %s -calmult 20
+    Idem, but the number of peaks that are considered for matching are the
+    number of potential calibrants times 20
 `, progName, progName, progName)
 }
 
@@ -1134,24 +1132,24 @@ func main() {
 function is determined from the instrument specified in the mzML file.
 Valid function names:
     FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-	POLY<N>: Polynomial with degee <N> (range 1:5)
-	OFFSET: Constant m/z offset per spectrum.`)
+    POLY<N>: Polynomial with degee <N> (range 1:5)
+    OFFSET: Constant m/z offset per spectrum.`)
 	par.stage = flag.Int("stage", 0,
 		`0: do all calibration stages in one run
 1: only compute recalibration parameters
 2: perform recalibration using previously computer parameters
-	NOTE: The mzML file that is produced after recalibration does not contain an
-	index. If an index is required, we recommend post-processing the output file 
-	with msconvert (http://proteowizard.sourceforge.net/download.html).`)
-	par.mzMLRecalFilename = flag.String("mzmlOut",
+NOTE: The mzML file that is produced after recalibration does not contain an
+      index. If an index is required, we recommend post-processing the output file 
+      with msconvert (http://proteowizard.sourceforge.net/download.html).`)
+	par.mzMLRecalFilename = flag.String("o",
 		"",
-		"recalibrated mzML filename (only together with -recal)\n")
+		`filename of recalibrated mzML`)
 	par.mzIdentMlFilename = flag.String("mzid",
 		"",
-		"mzIdentMl filename\n")
+		`mzIdentMl filename`)
 	par.calFilename = flag.String("cal",
 		"",
-		"filename for output of computed calibration parameters\n")
+		`filename for output of computed calibration parameters`)
 	par.emptyNonCalibrated = flag.Bool("empty-non-calibrated", false,
 		`Empty MS2 spectra for which the precursor was not recalibrated.`)
 	par.minCal = flag.Int("mincals",
@@ -1161,23 +1159,23 @@ If 0, the minimum number of calibrants is set to the smallest number needed
 for the choosen recalibration function plus one. In any other case, is the
 specified number is too low for the calibration function, it is increased to
 the minimum needed value.`)
-	par.calPeaks = flag.Int("calpeaks",
+	par.calPeaks = flag.Int("calmult",
 		10,
-		`only the topmost (<calpeaks> * <number of potential calibrants>) are
-considered for computing the recalibration. <1 means all peaks.`)
-	par.minPeak = flag.Float64("minPeak",
+		`only the topmost (<calmult> * <number of potential calibrants>)
+peaks are considered for computing the recalibration. <1 means all peaks.`)
+	par.minPeak = flag.Float64("minpeak",
 		0.0,
 		`minimum peak intensity to consider for computing the recalibration.`)
 	par.rtWindow = flag.String("rt",
 		"-10.0:10.0",
-		"rt window (s)\n")
-	par.mzErrPPM = flag.Float64("mzTry",
+		`rt window (s)`)
+	par.mzErrPPM = flag.Float64("ppmuncal",
 		10.0,
-		"max mz error (ppm) for trying to use calibrant for calibration\n")
-	par.mzTargetPPM = flag.Float64("mzAccept",
+		`max mz error (ppm) for trying to use calibrant for calibration`)
+	par.mzTargetPPM = flag.Float64("ppmcal",
 		2.0,
-		"max mz error (ppm) for accepting a calibrant for calibration\n")
-	par.scoreFilter = flag.String("scoreFilter",
+		`max mz error (ppm) for accepting a calibrant for calibration`)
+	par.scoreFilter = flag.String("scorefilter",
 		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
 		`filter for PSM scores to accept. Format:
 <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
@@ -1185,15 +1183,13 @@ When multiple score names/CV terms are specified, the first one on the list
 that matches a score in the input file will be used.
 TODO: The default contains reasonable values for some common search engines
 and post-search scoring software:
-MS:1002257 (Comet:expectation value)
-MS:1001159 (SEQUEST:expectation value)
-MS:1002466 (PeptideShaker PSM score)
-`)
+  MS:1002257 (Comet:expectation value)
+  MS:1001159 (SEQUEST:expectation value)
+  MS:1002466 (PeptideShaker PSM score)`)
 	par.charge = flag.String("charge",
 		"1:5",
 		`charge range of calibrants, or the string "ident". If set to "ident",
-only the charge as found in the mzIdentMl file will be used for calibration.
-`)
+only the charge as found in the mzIdentMl file will be used for calibration.`)
 	version := flag.Bool("version", false,
 		`Show software version`)
 	flag.Usage = usage

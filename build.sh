@@ -24,6 +24,6 @@ cd gsl-2.6
 ./configure --host=x86_64-w64-mingw32 --prefix="${GSL_INSTALL}"
 make -j 9
 make install
-echo Build rzrecal
+echo Build mzrecal
 cd $MZRECALDIR
 CGO_CFLAGS="-I ${GSL_INSTALL}/include" CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -ldflags "-extldflags \"-static -L/home/robm/gsl_windows/lib/\" -X main.progVersion=${VERSION}"  -o $TARGET_DIR/mzrecal.exe

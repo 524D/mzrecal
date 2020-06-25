@@ -38,7 +38,7 @@ echo -n "Number of identifications with expectation value<0.01: "
 grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}.mzid" | wc -l
 
 echo -n "Recalibration "
-$T "${TOOLS_DIR}/mzrecal" -mzTry=10 -mzAccept=3 -scoreFilter="MS:1002257(0.0:0.05)"  -empty-non-calibrated "${DATA_DIR}/${FN_BASE}.mzML"
+$T "${TOOLS_DIR}/mzrecal" -ppmuncal=10 -ppmcal=3 -scorefilter="MS:1002257(0.0:0.05)"  -empty-non-calibrated "${DATA_DIR}/${FN_BASE}.mzML"
 
 echo -n "Running msconvert (generating indexed mzml) "
 $T "${TOOLS_DIR}/msconvert" "${DATA_DIR}/${FN_BASE}-recal.mzML" --outfile "${FN_BASE}-recal.indexed.mzML" -o "${DATA_DIR}"  >/dev/null

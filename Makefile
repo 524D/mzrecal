@@ -38,7 +38,7 @@ IDCONVERT=$(TOOLS_DIR)/idconvert
 MSCONVERT=$(TOOLS_DIR)/msconvert
 MSCONVERT_DOCKER=docker run -it --rm -e WINEDEBUG=-all -v $(DATA_DIR):/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --zlib --filter "peakPicking vendor"
 MZRECAL=$(TOOLS_DIR)/mzrecal
-MZRECAL_FLAGS=-mzTry=$(PPM1)
+MZRECAL_FLAGS=-ppmuncal=$(PPM1)
 PLOT=$(TOOLS_DIR)/plot-recal.R
 PLOT_FLAGS=-e 0.01 -m $(PPM2)
 
@@ -104,7 +104,7 @@ endif
 $(RESULT_DIR)/%-recal.mzML: %.mzML $(RESULT_DIR)/%-$(PPM1)ppm.mzid $(MZRECAL)
 	$(eval TMP := $(shell mktemp -d))
 	$(MZRECAL) $(MZRECAL_FLAGS) -mzid=$(RESULT_DIR)/$*-$(PPM1)ppm.mzid \
-	-mzmlOut=$(TMP)/$*-recal.mzML -cal=$(RESULT_DIR)/$*-recal.json $<
+	-o=$(TMP)/$*-recal.mzML -cal=$(RESULT_DIR)/$*-recal.json $<
 	$(MSCONVERT) -z $(TMP)/$*-recal.mzML -o $(RESULT_DIR)
 
 # Search recalibrated with small mass window
