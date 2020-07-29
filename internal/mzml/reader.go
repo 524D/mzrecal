@@ -190,6 +190,29 @@ func (f *MzML) RetentionTime(scanIndex int) (float64, error) {
 	return -1.0, nil
 }
 
+// IonInjectionTime returns the ion injection time of a spectrum in ms,
+// or NaN is not found
+func (f *MzML) IonInjectionTime(scanIndex int) (float64, error) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
+		return 0.0, ErrInvalidScanIndex
+	}
+	for _, scan := range f.content.Run.SpectrumList.Spectrum[scanIndex].ScanList.Scan {
+		for _, cvParam := range scan.CvParam {
+			if cvParam.Accession == "MS:1000927" {
+				t, err := strconv.ParseFloat(cvParam.Value, 64)
+				// Check if the ion injection time is in miliseconds,
+				// (always the case currently), otherwise return error
+				if cvParam.UnitAccession != "UO:0000028" {
+					return t, ErrUnknownUnit
+				}
+
+				return t, err
+			}
+		}
+	}
+	return math.NaN(), nil
+}
+
 // ReadScan reads a single scan
 // n is the sequence number of the scan in the mzML file,
 // This is not the same as the scan number that is specified
@@ -224,6 +247,21 @@ func (f *MzML) Centroid(scanIndex int) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// TotalIonCurrent returns the total ion current, or NaN if not found
+func (f *MzML) TotalIonCurrent(scanIndex int) (float64, error) {
+	if scanIndex < 0 || scanIndex >= f.NumSpecs() {
+		return 0.0, ErrInvalidScanIndex
+	}
+
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
+		if cvParam.Accession == "MS:1000285" { // total ion current
+			tic, err := strconv.ParseFloat(cvParam.Value, 64)
+			return tic, err
+		}
+	}
+	return math.NaN(), nil
 }
 
 // MSLevel returns the MS level of a scan
@@ -274,12 +312,6 @@ func (f *MzML) MSInstruments() ([]string, error) {
 // collects info of all scans and
 // and fills the arrays f.index2id and f.id2Index to make scans accessible
 func (f *MzML) traverseScan() error {
-
-	// 	id: MS:1000579
-	// name: MS1 spectrum
-	// id: MS:1000580
-	// name: MSn spectrum
-	// )
 
 	f.index2id = make([]string, f.NumSpecs(), f.NumSpecs())
 	f.id2Index = make(map[string]int, f.NumSpecs())

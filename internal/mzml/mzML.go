@@ -5,6 +5,7 @@ import (
 	"errors"
 )
 
+// MzML wraps the contents of the mzML file
 type MzML struct {
 	content  mzMLContent
 	index2id []string
@@ -217,4 +218,5 @@ type cvParam struct {
 var (
 	ErrInvalidScanId    = errors.New("MzML: invalid scan id")
 	ErrInvalidScanIndex = errors.New("MzML: invalid scan index")
+	ErrUnknownUnit      = errors.New("MzML: can't handle unit")
 )
