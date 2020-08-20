@@ -5,8 +5,8 @@
 #   mzrecal, comet, idconvert, plot-recal.R
 # - Set PPM1 to the mass error to search for PSM used for recalibration
 # - Set PPM2 to the mass error for comparing the recalibrated results to the original
-# - Comet parameter files must be in same directory as search data, and must be
-#   named: <dontcare>${PPM1}ppm.params and <dontcare>${PPM1}ppm.params
+# - A single comet parameter file must be in the data directory.
+#   The 'ppm' parameter is not used, the file is copied and the parameter is set in the copy.
 # 
 
 
