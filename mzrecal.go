@@ -84,6 +84,7 @@ type params struct {
 	minCharge          int      // min charge for calibrants
 	maxCharge          int      // max charge for calibrants
 	args               []string // Addtional values passed on the command line
+	debug              bool     // Enable debug info (environment variable MZRECAL_DEBUG=1)
 }
 
 // Calibrant as read from mzid file (or build in), with uncharged mass
@@ -119,16 +120,22 @@ type recalParams struct {
 	SpecRecalPar   []specRecalParams
 }
 
+type specDebugInfo struct {
+	CalsInRTWindow   int
+	CalsInMassWindow int
+	CalsUsed         int
+	TotalIonCurrent  float64 `json:",omitempty"`
+	IonInjectionTime float64 `json:",omitempty"`
+}
+
 // specRecalParams contain the recalibration parameters for each
 // spectrum. RecalMethod (from type recalParams) determines which
 // computation must be done with these parameters to obtain the
 // final calibration
 type specRecalParams struct {
-	SpecIndex        int
-	P                []float64
-	CalsInRTWindow   int
-	CalsInMassWindow int
-	CalsUsed         int
+	SpecIndex int
+	P         []float64
+	DebugInfo []specDebugInfo `json:",omitempty"`
 }
 
 type scoreRange struct {
@@ -593,10 +600,27 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 				log.Printf("computeRecal calibration failed for spectrum %d: %v",
 					i, err)
 			}
-			specRecalPar.CalsInRTWindow = len(calibrants)
-			specRecalPar.CalsInMassWindow = len(matchingCals)
-			specRecalPar.CalsUsed = len(calibrantsUsed)
+			if par.debug {
+				debugInfo := make([]specDebugInfo, 1, 1)
+				debugInfo[0].CalsInRTWindow = len(calibrants)
+				debugInfo[0].CalsInMassWindow = len(matchingCals)
+				debugInfo[0].CalsUsed = len(calibrantsUsed)
+				iit, err := mzML.IonInjectionTime(i)
+				if err != nil {
+					log.Printf("computeRecal IonInjectionTime failed for spectrum %d: %v",
+						i, err)
+				}
+				if !math.IsNaN(iit) {
+					debugInfo[0].IonInjectionTime = iit
+				}
+				tic, _ := mzML.TotalIonCurrent(i)
+				if !math.IsNaN(tic) {
+					debugInfo[0].TotalIonCurrent = tic
+				}
+				specRecalPar.DebugInfo = debugInfo
+			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
+
 			debugLogSpecs(i, numSpecs, retentionTime, peaks, matchingCals, par,
 				calibrantsUsed, recalMethod, specRecalPar)
 			debugRegisterCalUsed(i, matchingCals, par, calibrantsUsed)
@@ -1113,6 +1137,10 @@ EXECUTION STAGES:
         computes recalibrated m/z values for all peaks in spectra for which
         a valid recalibration was found, and writes a recalibrated mzML file.
 
+ENVIRONMENT VARIABLES:
+	When environment variable MZRECAL_DEBUG=1, extra information is added to the
+	JSON file that can help checking the performance of %s. 
+
 USAGE EXAMPLES:
   %s BSA.mzML
     Recalibrate BSA.mzML using identifications in BSA.mzid, write recalibrated
@@ -1126,7 +1154,7 @@ USAGE EXAMPLES:
   %s -calmult 20
     Idem, but the number of peaks that are considered for matching are the
     number of potential calibrants times 20
-`, progName, progName, progName)
+`, progName, progName, progName, progName)
 }
 
 func main() {
@@ -1206,6 +1234,9 @@ only the charge as found in the mzIdentMl file will be used for calibration.`)
 		return
 	}
 	par.args = flag.Args()
+	// Check if debug output should be enabled
+	par.debug = os.Getenv("MZRECAL_DEBUG") == `1`
+
 	sanatizeParams(&par)
 	switch *par.stage {
 	case 1:
