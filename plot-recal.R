@@ -133,7 +133,7 @@ y1<- 0.1;
 x2<- maxPpmErr*0.65;
 y2<- 0.1;
 # Special case for files used in publication
-if (str_detect(outputFnBase, "120118ry_201B7-32_2_2-120118ry007")) {
+if (str_detect(outputFnBase, "120118ry_201B7-32_2_2")) {
 x1<- -7.1;
 y1<- 0.12;
 x2<- 2.5;
@@ -149,7 +149,7 @@ y2<- 0.45;
 
 myLegendPos <- "none";
 if (!opt$options$nolegend) {
-    myLegendPos <- c(0.85, 0.92);
+    myLegendPos <- c(0.85, 0.91);
 }
 g <- ggplot(mzidGood, aes(x=calculatedMassToCharge, y=ppmErr, colour = class))+
         theme(axis.title.y=element_blank(),
@@ -158,8 +158,9 @@ g <- ggplot(mzidGood, aes(x=calculatedMassToCharge, y=ppmErr, colour = class))+
         geom_point(size=1, alpha = 0.3) +
         theme(text=element_text(size=12, family="sans"),
               legend.title=element_blank(),
+              legend.background = element_rect(fill=alpha('white', 0.0)),
               legend.position = myLegendPos) +
-        scale_x_continuous(name="m/z", limits=c(270, 1250)) +
+        scale_x_continuous(name=expression(italic("m/z")), limits=c(270, 1250)) +
         scale_y_continuous(limits=c(-maxPpmErr, maxPpmErr)) +
         scale_color_manual(values = colors) +
         geom_smooth(method = "lm")
@@ -177,7 +178,6 @@ gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
         annotate(geom="text", x1, y2, label=txt1, color=colors[1]) +
         annotate(geom="text", x2, y2, label=txt2, color=colors[2])
 
-#grid.arrange(gd, g, widths = c(1, 2), ncol=2)
 p <- arrangeGrob(gd, g, widths = c(1, 2), ncol=2,
     top = textGrob(opt$options$name,gp=gpar(fontsize=12)))
 
@@ -198,17 +198,29 @@ plotFile <- paste(outputFnBase, ".png", sep="")
 # 2 sub figures next to each other: 1.6929 inch
 # Filling this in below dows not create a usable plot -> rescale later
 
+# ggsave(
+#   plotFile,
+#   plot = p,
+#   device = NULL,
+#   path = NULL,
+#   scale = 1,
+#   width = NA,
+#   height = NA,
+#   units = c("in", "cm", "mm"),
+#   dpi = 300,
+#   limitsize = TRUE,
+# )
+
 ggsave(
   plotFile,
   plot = p,
   device = NULL,
   path = NULL,
   scale = 1,
-  width = NA,
-  height = NA,
-  units = c("in", "cm", "mm"),
+  width = 8,
+  height = 6,
+  units = "in",
   dpi = 300,
   limitsize = TRUE,
 )
-
 
