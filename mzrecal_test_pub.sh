@@ -2,7 +2,7 @@
 THISDIR=$PWD
 DATA_DIR="${HOME}/data/mzrecal-application-note"
 TOOLS_DIR="${HOME}/tools"
-FN1='120118ry_201B7-32_2_2-120118ry007'
+FN1='120118ry_201B7-32_2_2'
 FN2='GSC11_24h_R1'
 FASTA='UP000005640_9606.fasta'
 T='/usr/bin/time -f %E'
@@ -95,12 +95,12 @@ grep 'Comet:expectation value" value=".*E-.[3-9]' -P "${DATA_DIR}/${FN_BASE}-rec
 FN_BASE=${FN1}
 PPMERR=10
 "${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}"  -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}" \
-   "--name=TOF data (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+   "--name=TOF data (PXD000071 ${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 FN_BASE=${FN2}
 PPMERR=5
 "${TOOLS_DIR}/plot-recal.R" -e "${EXPECT}" --nolegend -m ${PPMERR} --outfile="${DATA_DIR}/${FN_BASE}" \
-   "--name=Orbitrap data (${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
+   "--name=Orbitrap data (PXD000563 ${FN_BASE})" "${DATA_DIR}/${FN_BASE}.mzid" "${DATA_DIR}/${FN_BASE}-recal.mzid"
 
 montage "${DATA_DIR}/${FN2}.png" "${DATA_DIR}/${FN1}.png" -tile 2x1 -geometry +0+0 "${DATA_DIR}/combined.png"
 
