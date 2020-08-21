@@ -22,7 +22,7 @@ go get -ldflags '-extldflags "-static"' github.com/524D/mzrecal
 The resulting executable program can then be found at `~/go/bin/mzrecal`.
 
 # Input and output
-mzrecal uses file formats specified by the Proteomics Standards Initiative 
+mzRecal uses file formats specified by the Proteomics Standards Initiative 
 (PSI), notably [mzML](http://www.psidev.info/mzML) and [mzIdentML](http://www.psidev.info/mzidentml).
 
 For recalibration, a peak-picked mzML file and corresponding
