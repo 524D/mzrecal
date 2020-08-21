@@ -213,11 +213,13 @@ mzRecal was made possible in part due to funding from the ELIXIR Implementation 
 Palmblad M, Bindschedler LV, Gibson TM, Cramer R (2006). 
 Automatic internal calibration in liquid chromatography/Fourier transform ion cyclotron resonance mass spectrometry of protein digests. 
 Rapid Commun. Mass Spectrom. 2006;20(20):3076-80.
-<a id="2">[2]</a> 
+<a id="2">[2]</a>
+
 Palmblad M, van der Burgt YEM, Dalebout H, Derks RJE, Schoenmaker B, Deelder AM (2009).
 Improving mass measurement accuracy in mass spectrometry based proteomics by combining open source tools for chromatographic alignment and internal calibration. 
 J. Proteomics. 2009;72(4):722-4.
-<a id="3">[3]</a> 
+<a id="3">[3]</a>
+
 de Bruin JS, Deelder AM,  Palmblad M, (2012). 
 Scientific workflow management in proteomics. 
 Mol. Cell. Proteomics. 2012 Jul;11(7):M111.010595.
