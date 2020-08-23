@@ -101,9 +101,33 @@ type instrumentConfigurationList struct {
 }
 
 type dataProcessingList struct {
-	Count                 int    `xml:"count,attr,omitempty"`
-	DataProcessingListXML []byte `xml:",innerxml"`
+	Count           int              `xml:"count,attr,omitempty"`
+	DataProcessingd []DataProcessing `xml:"dataProcessing,omitempty"`
 }
+
+type DataProcessing struct {
+	ID               string             `xml:"id,attr,omitempty"`
+	ProcessingMethod []processingMethod `xml:"processingMethod"`
+}
+
+type processingMethod struct {
+	Count       int         `xml:"order,attr,omitempty"`
+	SoftwareRef string      `xml:"softwareRef,attr,omitempty"`
+	CvParam     []cvParam   `xml:"cvParam,omitempty"`
+	UserParam   []userParam `xml:"userParam,omitempty"`
+}
+
+// <dataProcessingList count="1">
+// <dataProcessing id="pwiz_Reader_Thermo_conversion">
+//   <processingMethod order="0" softwareRef="pwiz">
+// 	<cvParam cvRef="MS" accession="MS:1000544" name="Conversion to mzML" value=""/>
+//   </processingMethod>
+//   <processingMethod order="1" softwareRef="pwiz">
+// 	<cvParam cvRef="MS" accession="MS:1000035" name="peak picking" value=""/>
+// 	<userParam name="Thermo/Xcalibur peak picking"/>
+//   </processingMethod>
+// </dataProcessing>
+// </dataProcessingList>
 
 type run struct {
 	Id                                string           `xml:"id,attr,omitempty"`
