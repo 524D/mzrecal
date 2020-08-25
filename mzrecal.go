@@ -929,7 +929,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 		}
 	}
 	if par.verbosity != infoSilent {
-		fmt.Fprintf(os.Stderr, "MS2 count: %d Updated:%d\n", precursorsTotal, precursorsUpdated)
+		fmt.Fprintf(os.Stderr, "MS2 count: %d Updated precursors:%d\n", precursorsTotal, precursorsUpdated)
 	}
 	return nil
 }
@@ -1010,7 +1010,7 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Recalibration spectra\n")
+		fmt.Fprintf(os.Stderr, "Recalibrating spectra\n")
 	}
 
 	for _, specRecalPar := range recal.SpecRecalPar {
@@ -1043,7 +1043,7 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Writing mzML\n")
+		fmt.Fprintf(os.Stderr, "Writing MS data\n")
 	}
 
 	err = writeRecalMzML(mzML, recal, par)
