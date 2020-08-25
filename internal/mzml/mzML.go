@@ -105,11 +105,15 @@ type dataProcessingList struct {
 	DataProcessingd []DataProcessing `xml:"dataProcessing,omitempty"`
 }
 
+// DataProcessing contains info for the correspondingly named
+// tag in mzML
 type DataProcessing struct {
 	ID             string             `xml:"id,attr,omitempty"`
 	ProcessingMeth []ProcessingMethod `xml:"processingMethod"`
 }
 
+// ProcessingMethod contains info for the correspondingly named
+// tag in mzML
 type ProcessingMethod struct {
 	Count       int         `xml:"order,attr,omitempty"`
 	SoftwareRef string      `xml:"softwareRef,attr,omitempty"`
@@ -118,7 +122,7 @@ type ProcessingMethod struct {
 }
 
 type run struct {
-	Id                                string           `xml:"id,attr,omitempty"`
+	ID                                string           `xml:"id,attr,omitempty"`
 	DefaultInstrumentConfigurationRef string           `xml:"defaultInstrumentConfigurationRef,attr,omitempty"`
 	StartTimeStamp                    string           `xml:"startTimeStamp,attr,omitempty"`
 	DefaultSourceFileRef              string           `xml:"defaultSourceFileRef,attr,omitempty"`
@@ -188,6 +192,7 @@ type precursorList struct {
 	Precursor []XMLprecursor `xml:"precursor"`
 }
 
+// XMLprecursor contains info for the correspondingly named tag in the mzML file
 type XMLprecursor struct {
 	SpectrumRef     string          `xml:"spectrumRef,attr,omitempty"`
 	IsolationWindow isolationWindow `xml:"isolationWindow,omitempty"`
@@ -230,7 +235,10 @@ type CVParam struct {
 }
 
 var (
-	ErrInvalidScanId    = errors.New("MzML: invalid scan id")
+	// ErrInvalidScanID means an invalid scan id is supplied
+	ErrInvalidScanID = errors.New("MzML: invalid scan id")
+	// ErrInvalidScanIndex means an invalid scan index is supplied
 	ErrInvalidScanIndex = errors.New("MzML: invalid scan index")
-	ErrUnknownUnit      = errors.New("MzML: can't handle unit")
+	// ErrUnknownUnit means the file contains a unit that the software cannot handle
+	ErrUnknownUnit = errors.New("MzML: can't handle unit")
 )

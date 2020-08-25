@@ -342,7 +342,7 @@ func (f *MzML) ScanIndex(scanID string) (int, error) {
 	if index, ok := f.id2Index[scanID]; ok {
 		return index, nil
 	}
-	return 0, ErrInvalidScanId
+	return 0, ErrInvalidScanID
 }
 
 // ScanID converts a scan index (used to access the scan data) into a scan id

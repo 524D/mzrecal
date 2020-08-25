@@ -54,8 +54,8 @@ func TestAll1(t *testing.T) {
 		}
 
 		_, err = f.ScanIndex(`file=sourceFile1`)
-		if err != ErrInvalidScanId {
-			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+		if err != ErrInvalidScanID {
+			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanID", err)
 		}
 		scanIndex, err := f.ScanIndex(`file=sourceFile`)
 		if err != nil {
@@ -66,7 +66,7 @@ func TestAll1(t *testing.T) {
 		}
 		_, err = f.ScanID(1)
 		if err != ErrInvalidScanIndex {
-			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+			t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanID", err)
 		}
 		scanID, err := f.ScanID(0)
 		if err != nil {
@@ -133,8 +133,8 @@ func TestAll2(t *testing.T) {
 	}
 
 	_, err = f.ScanIndex(`blabla`)
-	if err != ErrInvalidScanId {
-		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+	if err != ErrInvalidScanID {
+		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanID", err)
 	}
 	scanIndex, err := f.ScanIndex(`controllerType=0 controllerNumber=1 scan=63`)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestAll2(t *testing.T) {
 
 	_, err = f.ScanID(666666)
 	if err != ErrInvalidScanIndex {
-		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanId", err)
+		t.Errorf("ScanIndex: error return %v, should be ErrInvalidScanID", err)
 	}
 	scanID, err := f.ScanID(42)
 	if err != nil {
