@@ -65,7 +65,7 @@ func (m *MzIdentML) Ident(i int) (Identification, error) {
 	}
 	ident.SpecID = m.content.SpectrumIdentificationResult[specIDIdx].SpectrumID
 	ident.RetentionTime = float64(-1)
-	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].CvParam {
+	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].CvPar {
 		// scan start time or retention time(s) (obsolete)
 		if cv.Accession == "MS:1000016" || cv.Accession == "MS:1001114" {
 			retentionTime, err := strconv.ParseFloat(cv.Value, 64)
@@ -80,7 +80,7 @@ func (m *MzIdentML) Ident(i int) (Identification, error) {
 		}
 	}
 	// Collect CV terms/values for the identification, the scores are in there
-	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].SpectrumIdentificationItem[specResultIdx].CvParam {
+	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].SpectrumIdentificationItem[specResultIdx].CvPar {
 		ident.Cv = append(ident.Cv, cv)
 	}
 

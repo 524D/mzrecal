@@ -53,13 +53,13 @@ type modification struct {
 type spectrumIdentificationResult struct {
 	SpectrumID                 string `xml:"spectrumID,attr"`
 	SpectrumIdentificationItem []spectrumIdentificationItem
-	CvParam                    []cvParam `xml:"cvParam"`
+	CvPar                      []cvParam `xml:"cvParam"`
 }
 
 type spectrumIdentificationItem struct {
 	ChargeState int       `xml:"chargeState,attr"`
 	PeptideRef  string    `xml:"peptide_ref,attr"`
-	CvParam     []cvParam `xml:"cvParam"`
+	CvPar       []cvParam `xml:"cvParam"`
 }
 
 type cvParam struct {
