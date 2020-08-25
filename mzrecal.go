@@ -27,8 +27,7 @@ import (
 // Program name and version, appended to software list in mzML output
 const progName = "mzRecal"
 
-var progVersion = `Unknown
-Please build this program with script 'build.sh' so that the git version is shown here.`
+var progVersion = `Unknown`
 
 // Format of output, if it ever changes we should still be able to parse
 // output from old versions
@@ -229,6 +228,33 @@ var aaMass = map[rune]float64{
 	'V': 99.0684139,
 	'W': 186.0793129,
 	'Y': 163.0633285,
+}
+
+// Data processing steps to be added to mzML file
+var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
+	ID: "mzRecal",
+	ProcessingMeth: []mzml.ProcessingMethod{
+		{
+			Count:       0,
+			SoftwareRef: "mzRecal",
+			CvPar: []mzml.CVParam{
+				{
+					Accession: `MS:1001485`,
+					Name:      `m/z calibration`,
+				},
+			},
+		},
+		{
+			Count:       1,
+			SoftwareRef: "mzRecal",
+			CvPar: []mzml.CVParam{
+				{
+					Accession: `MS:1000780`,
+					Name:      `precursor recalculation`,
+				},
+			},
+		},
+	},
 }
 
 // Parse string like "-12:6" into 2 values, -12 and 6
@@ -901,7 +927,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 
 func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, par params, specNr int) {
 	isolationWindow := precursor.IsolationWindow
-	for k, cvParam := range isolationWindow.CvParam {
+	for k, cvParam := range isolationWindow.CvPar {
 		if cvParam.Accession == cvIsolationWindowTargetMz {
 			mz, err := strconv.ParseFloat(cvParam.Value, 64)
 			if err != nil {
@@ -909,7 +935,7 @@ func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, pa
 					cvParam.Value, specNr)
 			} else {
 				mzNew := mzRecal(mz, recalPars)
-				isolationWindow.CvParam[k].Value =
+				isolationWindow.CvPar[k].Value =
 					strconv.FormatFloat(mzNew, 'f', 8, 64)
 				break
 			}
@@ -921,7 +947,7 @@ func recalSelectedIons(precursor *mzml.XMLprecursor, recalPars *CalParams,
 	par params, specNr int, numSpecs int) bool {
 	var updated bool
 	for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
-		for k, cvParam := range selectedIon.CvParam {
+		for k, cvParam := range selectedIon.CvPar {
 			if cvParam.Accession == cvParamSelectedIonMz {
 				mz, err := strconv.ParseFloat(cvParam.Value, 64)
 				if err != nil {
@@ -929,7 +955,7 @@ func recalSelectedIons(precursor *mzml.XMLprecursor, recalPars *CalParams,
 						cvParam.Value, specNr)
 				} else {
 					mzNew := mzRecal(mz, recalPars)
-					selectedIon.CvParam[k].Value =
+					selectedIon.CvPar[k].Value =
 						strconv.FormatFloat(mzNew, 'f', 8, 64)
 					debugLogPrecursorUpdate(specNr, numSpecs, mz, mzNew, par)
 					updated = true
@@ -992,6 +1018,7 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	}
 
 	mzML.AppendSoftwareInfo(progName, progVersion)
+	mzML.AppendDataProcessing(mzRecalProcessing)
 
 	err = updatePrecursorMz(mzML, recal, par)
 	if err != nil {
@@ -1211,7 +1238,7 @@ peaks are considered for computing the recalibration. <1 means all peaks.`)
 		2.0,
 		`max mz error (ppm) for accepting a calibrant for calibration`)
 	par.scoreFilter = flag.String("scorefilter",
-		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)",
+		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)",
 		`filter for PSM scores to accept. Format:
 <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
 When multiple score names/CV terms are specified, the first one on the list
@@ -1219,6 +1246,7 @@ that matches a score in the input file will be used.
 TODO: The default contains reasonable values for some common search engines
 and post-search scoring software:
   MS:1002257 (Comet:expectation value)
+  MS:1001330 (X!Tandem:expectation value)
   MS:1001159 (SEQUEST:expectation value)
   MS:1002466 (PeptideShaker PSM score)`)
 	par.charge = flag.String("charge",
@@ -1230,6 +1258,10 @@ only the charge as found in the mzIdentMl file will be used for calibration.`)
 	flag.Usage = usage
 	flag.Parse()
 	if *version {
+		if progVersion == `Unknown` {
+			progVersion = `Unknown
+Please build this program with script 'build.sh' so that the git version is shown here.`
+		}
 		fmt.Fprintf(os.Stderr, "%s version %s\n", progName, progVersion)
 		return
 	}
