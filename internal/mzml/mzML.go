@@ -12,29 +12,6 @@ type MzML struct {
 	id2Index map[string]int
 }
 
-// type Precursor struct {
-// 	spectrumRef string
-// 	selectedIon []Peak
-// }
-
-// CV Terms for binary data compression
-// MS:1000574 zlib compression
-// MS:1000576 No Compression
-// MS:1002312 MS-Numpress linear prediction compression
-// MS:1002313 MS-Numpress positive integer compression
-// MS:1002314 MS-Numpress short logged float compression
-// MS:1002746 MS-Numpress linear prediction compression followed by zlib compression
-// MS:1002747 MS-Numpress positive integer compression followed by zlib compression
-// MS:1002748 MS-Numpress short logged float compression followed by zlib compression
-
-// CV Terms for binary data array types
-// MS:1000514 m/z array
-// MS:1000515 intensity array
-
-// CV Terms for binary-data-type
-// MS:1000521 32-bit float
-// MS:1000523 64-bit float
-
 // Peak contains the actual ms peak info
 type Peak struct {
 	Mz     float64
@@ -115,7 +92,7 @@ type DataProcessing struct {
 // ProcessingMethod contains info for the correspondingly named
 // tag in mzML
 type ProcessingMethod struct {
-	Count       int         `xml:"order,attr,omitempty"`
+	Count       int         `xml:"order,attr"`
 	SoftwareRef string      `xml:"softwareRef,attr,omitempty"`
 	CvPar       []CVParam   `xml:"cvParam,omitempty"`
 	UserPar     []userParam `xml:"userParam,omitempty"`
