@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
+// Read reads mzML file from an io.Reader
 func Read(reader io.Reader) (MzML, error) {
 	var mzML MzML
 

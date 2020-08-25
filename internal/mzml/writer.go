@@ -38,6 +38,7 @@ func (f *MzML) Write(writer io.Writer) error {
 	return err
 }
 
+// AppendSoftwareInfo adds info to the SoftwareList tag of the mzML file
 func (f *MzML) AppendSoftwareInfo(id string, version string) error {
 	var sw software
 
@@ -48,6 +49,7 @@ func (f *MzML) AppendSoftwareInfo(id string, version string) error {
 	return nil
 }
 
+// AppendDataProcessing adds info to the DataProcessing tag of the mzML file
 func (f *MzML) AppendDataProcessing(proc DataProcessing) error {
 	f.content.DataProcessingList.Count++
 	f.content.DataProcessingList.DataProcessingd = append(f.content.DataProcessingList.DataProcessingd, proc)
