@@ -60,6 +60,12 @@ const (
 	calibPoly5
 )
 
+const (
+	infoDefault = iota
+	infoSilent
+	infoVerbose
+)
+
 // Command line parameters
 type params struct {
 	stage              *int // Compute recal parmeters (1), recalibrate (2) or both (0)
@@ -82,6 +88,7 @@ type params struct {
 	useIdentCharge     bool     // Use only chage as found in identification
 	minCharge          int      // min charge for calibrants
 	maxCharge          int      // max charge for calibrants
+	verbosity          int      // Verbosity of progress messages (infoDefault...)
 	args               []string // Addtional values passed on the command line
 	debug              bool     // Enable debug info (environment variable MZRECAL_DEBUG=1)
 }
@@ -921,7 +928,9 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 			}
 		}
 	}
-	log.Printf("MS2 count: %d Updated:%d\n", precursorsTotal, precursorsUpdated)
+	if par.verbosity != infoSilent {
+		fmt.Fprintf(os.Stderr, "MS2 count: %d Updated:%d\n", precursorsTotal, precursorsUpdated)
+	}
 	return nil
 }
 
@@ -995,10 +1004,14 @@ func doRecal(par params) {
 
 // calibMzML re-calibrates an mzML file:
 // Recalibrate each spectrum
-// Add our program name and version to the mlML software list
+// Add our program name and version to the mzML software list
 // Write recalibrated mlML file
 func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
+
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Recalibration spectra\n")
+	}
 
 	for _, specRecalPar := range recal.SpecRecalPar {
 		// Skip spectra for which no recalibration coefficients are available
@@ -1020,9 +1033,17 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	mzML.AppendSoftwareInfo(progName, progVersion)
 	mzML.AppendDataProcessing(mzRecalProcessing)
 
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Updating precursors m/z\n")
+	}
+
 	err = updatePrecursorMz(mzML, recal, par)
 	if err != nil {
 		log.Fatalf("updatePrecursorMz: %v", err)
+	}
+
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Writing mzML\n")
 	}
 
 	err = writeRecalMzML(mzML, recal, par)
@@ -1037,6 +1058,10 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
 	}
 
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Reading identifications from %s\n", *par.mzIdentMlFilename)
+	}
+
 	f1, err := os.Open(*par.mzIdentMlFilename)
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -1046,9 +1071,18 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	if err != nil {
 		log.Fatalf("mzidentml.Read: error return %v", err)
 	}
+
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Creating initial calibrant list\n")
+	}
+
 	idCals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
 	if err != nil {
 		log.Fatal("makeCalibrantList failed")
+	}
+
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Reading MS data from %s\n", *par.mzIdentMlFilename)
 	}
 
 	f2, err := os.Open(*par.mzMLFilename)
@@ -1061,9 +1095,17 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 		log.Fatalf("mzml.Read: error return %v", err)
 	}
 
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Computing recalibration\n")
+	}
+
 	recal, err = computeRecal(&mzML, idCals, par)
 	if err != nil {
 		log.Fatalf("computeRecal: error return %v", err)
+	}
+
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "Writing recalibration coefficients\n")
 	}
 
 	err = writeRecal(recal, par)
@@ -1255,6 +1297,10 @@ and post-search scoring software:
 only the charge as found in the mzIdentMl file will be used for calibration.`)
 	version := flag.Bool("version", false,
 		`Show software version`)
+	verbose := flag.Bool("verbose", false,
+		`Print more verbose progress information`)
+	quiet := flag.Bool("quiet", false,
+		`Don't print any output except for errors`)
 	flag.Usage = usage
 	flag.Parse()
 	if *version {
@@ -1264,6 +1310,12 @@ Please build this program with script 'build.sh' so that the git version is show
 		}
 		fmt.Fprintf(os.Stderr, "%s version %s\n", progName, progVersion)
 		return
+	}
+	if *verbose {
+		par.verbosity = infoVerbose
+	}
+	if *quiet {
+		par.verbosity = infoSilent
 	}
 	par.args = flag.Args()
 	// Check if debug output should be enabled
