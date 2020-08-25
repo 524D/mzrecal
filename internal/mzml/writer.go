@@ -48,6 +48,12 @@ func (f *MzML) AppendSoftwareInfo(id string, version string) error {
 	return nil
 }
 
+func (f *MzML) AppendDataProcessing(proc DataProcessing) error {
+	f.content.DataProcessingList.Count++
+	f.content.DataProcessingList.DataProcessingd = append(f.content.DataProcessingList.DataProcessingd, proc)
+	return nil
+}
+
 // UpdateScan sets the mz/intensity info of a scan
 func (f *MzML) UpdateScan(scanIndex int, p []Peak,
 	updateMz bool, updateIntens bool) error {

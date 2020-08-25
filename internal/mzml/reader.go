@@ -87,7 +87,7 @@ func binaryDataPars(binaryDataArray *binaryDataArray) (
 	bits64 := bool(false)          // Default: 32 bits
 	mzArray := bool(false)
 	intensityArray := bool(false)
-	for _, cvParam := range binaryDataArray.CvParam {
+	for _, cvParam := range binaryDataArray.CvPar {
 		switch cvParam.Accession {
 		case `MS:1000574`: // zlib compression
 			zlibCompression = true
@@ -174,7 +174,7 @@ func (f *MzML) RetentionTime(scanIndex int) (float64, error) {
 		return 0.0, ErrInvalidScanIndex
 	}
 	for _, scan := range f.content.Run.SpectrumList.Spectrum[scanIndex].ScanList.Scan {
-		for _, cvParam := range scan.CvParam {
+		for _, cvParam := range scan.CvPar {
 			if cvParam.Accession == "MS:1000016" {
 				retentionTime, err := strconv.ParseFloat(cvParam.Value, 64)
 				// Check if the retention time is in minutes, otherwise assume it's seconds
@@ -197,7 +197,7 @@ func (f *MzML) IonInjectionTime(scanIndex int) (float64, error) {
 		return 0.0, ErrInvalidScanIndex
 	}
 	for _, scan := range f.content.Run.SpectrumList.Spectrum[scanIndex].ScanList.Scan {
-		for _, cvParam := range scan.CvParam {
+		for _, cvParam := range scan.CvPar {
 			if cvParam.Accession == "MS:1000927" {
 				t, err := strconv.ParseFloat(cvParam.Value, 64)
 				// Check if the ion injection time is in miliseconds,
@@ -241,7 +241,7 @@ func (f *MzML) Centroid(scanIndex int) (bool, error) {
 		return false, ErrInvalidScanIndex
 	}
 
-	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvPar {
 		if cvParam.Accession == "MS:1000127" { // centroid spectrum
 			return true, nil
 		}
@@ -255,7 +255,7 @@ func (f *MzML) TotalIonCurrent(scanIndex int) (float64, error) {
 		return 0.0, ErrInvalidScanIndex
 	}
 
-	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvPar {
 		if cvParam.Accession == "MS:1000285" { // total ion current
 			tic, err := strconv.ParseFloat(cvParam.Value, 64)
 			return tic, err
@@ -270,7 +270,7 @@ func (f *MzML) MSLevel(scanIndex int) (int, error) {
 		return 0, ErrInvalidScanIndex
 	}
 
-	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvParam {
+	for _, cvParam := range f.content.Run.SpectrumList.Spectrum[scanIndex].CvPar {
 		if cvParam.Accession == "MS:1000511" { // ms level
 			msLevel, err := strconv.ParseInt(cvParam.Value, 10, 64)
 			return int(msLevel), err
@@ -283,7 +283,7 @@ func (f *MzML) MSLevel(scanIndex int) (int, error) {
 func (f *MzML) MSInstruments() ([]string, error) {
 
 	type analyzer struct {
-		CvParam cvParam `xml:"cvParam"`
+		CvPar CVParam `xml:"cvParam"`
 	}
 	type instrumentConfiguration struct {
 		XMLName  xml.Name   `xml:"instrumentConfiguration"`
@@ -303,7 +303,7 @@ func (f *MzML) MSInstruments() ([]string, error) {
 
 	// Fill array with CV params of analysers
 	for _, conf := range instrConf.Analyzer {
-		instr = append(instr, conf.CvParam.Accession)
+		instr = append(instr, conf.CvPar.Accession)
 	}
 	return instr, nil
 }

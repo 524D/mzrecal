@@ -92,7 +92,7 @@ type softwareList struct {
 type software struct {
 	ID      string    `xml:"id,attr,omitempty"`
 	Version string    `xml:"version,attr,omitempty"`
-	CvParam []cvParam `xml:"cvParam,omitempty"`
+	CvPar   []CVParam `xml:"cvParam,omitempty"`
 }
 
 type instrumentConfigurationList struct {
@@ -106,28 +106,16 @@ type dataProcessingList struct {
 }
 
 type DataProcessing struct {
-	ID               string             `xml:"id,attr,omitempty"`
-	ProcessingMethod []processingMethod `xml:"processingMethod"`
+	ID             string             `xml:"id,attr,omitempty"`
+	ProcessingMeth []ProcessingMethod `xml:"processingMethod"`
 }
 
-type processingMethod struct {
+type ProcessingMethod struct {
 	Count       int         `xml:"order,attr,omitempty"`
 	SoftwareRef string      `xml:"softwareRef,attr,omitempty"`
-	CvParam     []cvParam   `xml:"cvParam,omitempty"`
-	UserParam   []userParam `xml:"userParam,omitempty"`
+	CvPar       []CVParam   `xml:"cvParam,omitempty"`
+	UserPar     []userParam `xml:"userParam,omitempty"`
 }
-
-// <dataProcessingList count="1">
-// <dataProcessing id="pwiz_Reader_Thermo_conversion">
-//   <processingMethod order="0" softwareRef="pwiz">
-// 	<cvParam cvRef="MS" accession="MS:1000544" name="Conversion to mzML" value=""/>
-//   </processingMethod>
-//   <processingMethod order="1" softwareRef="pwiz">
-// 	<cvParam cvRef="MS" accession="MS:1000035" name="peak picking" value=""/>
-// 	<userParam name="Thermo/Xcalibur peak picking"/>
-//   </processingMethod>
-// </dataProcessing>
-// </dataProcessingList>
 
 type run struct {
 	Id                                string           `xml:"id,attr,omitempty"`
@@ -154,7 +142,7 @@ type spectrum struct {
 	Index              int       `xml:"index,attr"`
 	ID                 string    `xml:"id,attr"`
 	DefaultArrayLength int64     `xml:"defaultArrayLength,attr"`
-	CvParam            []cvParam `xml:"cvParam,omitempty"`
+	CvPar              []CVParam `xml:"cvParam,omitempty"`
 	ScanList           scanList  `xml:"scanList"`
 	// precursorList is a slice, only the current version of
 	// the encoding/xml package does not handle "omitempty" properly on
@@ -172,20 +160,20 @@ type binaryDataArrayList struct {
 type binaryDataArray struct {
 	EncodedLength int       `xml:"encodedLength,attr,omitempty"`
 	ArrayLength   int       `xml:"arrayLength,attr,omitempty"`
-	CvParam       []cvParam `xml:"cvParam,omitempty"`
+	CvPar         []CVParam `xml:"cvParam,omitempty"`
 	Binary        string    `xml:"binary"`
 }
 
 type scanList struct {
-	Count   int       `xml:"count,attr,omitempty"`
-	CvParam []cvParam `xml:"cvParam,omitempty"`
-	Scan    []scan    `xml:"scan"`
+	Count int       `xml:"count,attr,omitempty"`
+	CvPar []CVParam `xml:"cvParam,omitempty"`
+	Scan  []scan    `xml:"scan"`
 }
 
 type scan struct {
 	InstrConfRef   string         `xml:"instrumentConfigurationRef,attr,omitempty"`
-	CvParam        []cvParam      `xml:"cvParam,omitempty"`
-	UserParam      []userParam    `xml:"userParam,omitempty"`
+	CvPar          []CVParam      `xml:"cvParam,omitempty"`
+	UserPar        []userParam    `xml:"userParam,omitempty"`
 	ScanWindowList scanWindowList `xml:"scanWindowList"`
 }
 
@@ -208,21 +196,21 @@ type XMLprecursor struct {
 }
 
 type isolationWindow struct {
-	CvParam []cvParam `xml:"cvParam,omitempty"`
+	CvPar []CVParam `xml:"cvParam,omitempty"`
 }
 
 type selectedIonList struct {
 	Count       int           `xml:"count,attr,omitempty"`
-	CvParam     []cvParam     `xml:"cvParam,omitempty"`
+	CvPar       []CVParam     `xml:"cvParam,omitempty"`
 	SelectedIon []selectedIon `xml:"selectedIon"`
 }
 
 type selectedIon struct {
-	CvParam []cvParam `xml:"cvParam,omitempty"`
+	CvPar []CVParam `xml:"cvParam,omitempty"`
 }
 
 type activation struct {
-	CvParam []cvParam `xml:"cvParam,omitempty"`
+	CvPar []CVParam `xml:"cvParam,omitempty"`
 }
 
 type scanWindowList struct {
@@ -230,7 +218,9 @@ type scanWindowList struct {
 	ScanWindowList string `xml:",innerxml"`
 }
 
-type cvParam struct {
+// CVParam contains values and attributes of a mzML Controlled Vocabulary term
+// (http://www.peptideatlas.org/tmp/mzML1.1.0.html)
+type CVParam struct {
 	Accession     string `xml:"accession,attr,omitempty"`
 	Name          string `xml:"name,attr,omitempty"`
 	Value         string `xml:"value,attr,omitempty"`
