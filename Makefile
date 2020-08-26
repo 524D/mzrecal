@@ -1,7 +1,7 @@
 # This makefile is used to run mzrecal on a set of files
 #
 # Before using:
-# - The following tools must be installed (in ${HOME}/tools, modify below if needed):
+# - The following tools must be installed (in ${HOME}/tools, modify location below if needed):
 #   mzrecal, comet, idconvert, plot-recal.R
 # - Set PPM1 to the mass error to search for PSM used for recalibration
 # - Set PPM2 to the mass error for comparing the recalibrated results to the original
