@@ -239,11 +239,11 @@ var aaMass = map[rune]float64{
 
 // Data processing steps to be added to mzML file
 var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
-	ID: "mzRecal",
+	ID: progName,
 	ProcessingMeth: []mzml.ProcessingMethod{
 		{
 			Count:       0,
-			SoftwareRef: "mzRecal",
+			SoftwareRef: progName,
 			CvPar: []mzml.CVParam{
 				{
 					Accession: `MS:1001485`,
@@ -253,7 +253,7 @@ var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
 		},
 		{
 			Count:       1,
-			SoftwareRef: "mzRecal",
+			SoftwareRef: progName,
 			CvPar: []mzml.CVParam{
 				{
 					Accession: `MS:1000780`,
@@ -1118,12 +1118,12 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 // sanatizeParams does some checks on parameters, and fills missing
 // filenames if possible
 func sanatizeParams(par *params) {
-	progName := filepath.Base(os.Args[0])
+	exeName := filepath.Base(os.Args[0])
 
 	if len(par.args) != 1 {
 		fmt.Fprintf(os.Stderr, `Last argument must be name of mzML file.
 Type %s --help for usage
-`, progName)
+`, exeName)
 		os.Exit(2)
 	}
 
@@ -1148,7 +1148,7 @@ Type %s --help for usage
 	if err != nil {
 		fmt.Fprintf(os.Stderr, `Invalid rtWindow.
 Type %s --help for usage
-`, progName)
+`, exeName)
 		os.Exit(2)
 	}
 	if *par.charge == `ident` {
@@ -1159,14 +1159,14 @@ Type %s --help for usage
 		if err != nil {
 			fmt.Fprintf(os.Stderr, `Invalid charge range.
 	Type %s --help for usage
-	`, progName)
+	`, exeName)
 			os.Exit(2)
 		}
 	}
 }
 
 func usage() {
-	progName := filepath.Base(os.Args[0])
+	exeName := filepath.Base(os.Args[0])
 	fmt.Fprintf(os.Stderr,
 		`USAGE:
   %s [options] <mzMLfile>
@@ -1175,7 +1175,7 @@ func usage() {
   using peptide identifications in an accompanying mzID file.
 
 OPTIONS:
-`, progName)
+`, exeName)
 	flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr,
 		`
@@ -1184,7 +1184,7 @@ BUILD-IN CALIBRANTS:
   for recalibration a number of compounds that are commonly found in many
   samples. These compound are all assumed to have +1 charge. The following
   list shows the build-in compounds with their (uncharged) masses:
-`, progName)
+`, exeName)
 
 	for _, cal := range fixedCalibrants {
 		fmt.Fprintf(os.Stderr, "     %s (%f)\n", cal.name, cal.mass)
@@ -1223,7 +1223,7 @@ USAGE EXAMPLES:
   %s -calmult 20
     Idem, but the number of peaks that are considered for matching are the
     number of potential calibrants times 20
-`, progName, progName, progName, progName)
+`, exeName, exeName, exeName, exeName)
 }
 
 func main() {
