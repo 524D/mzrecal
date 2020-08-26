@@ -1199,7 +1199,7 @@ EXECUTION STAGES:
         in a JSON file.
         This stage reads an mzML file and mzID file, matches measured peaks to
         computed m/z values and computes recalibration coefficents using a method
-        that is usefull for the instrument type. The instrument type (and other
+        that is useful for the instrument type. The instrument type (and other
         relavant values) are determined from the CV terms in the input files.
     2) Creating a recalibrated version of the MS file.
         This stage reads the mzML file and JSON file with recalibration values,
