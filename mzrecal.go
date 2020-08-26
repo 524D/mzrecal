@@ -1220,7 +1220,7 @@ USAGE EXAMPLES:
     Idem, but accept peptides with 20 ppm as potential calibrants, after
     recalibration all accepted peptides must be within 1.5 ppm
 
-  %s -calmult 20
+  %s -calmult 20 BSA.mzML
     Idem, but the number of peaks that are considered for matching are the
     number of potential calibrants times 20
 `, exeName, exeName, exeName, exeName)
