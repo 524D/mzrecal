@@ -1,5 +1,5 @@
 # What does mzRecal do?
-mzrecal recalibrates mass spectrometry (MS1) data in mzML format, using peptide identifications in mzIdentML. mzRecal uses calibration functions based on the physics of the mass analyzer (FTICR, Orbitrap, TOF). The recalibration procedure was originally developed by Magnus Palmblad [[1]](#1)[[2]](#2). See also [msRecal](https://www.ms-utils.org/Taverna/msRecal.html) and [recal2](http://www.ms-utils.org/recal2.html)) for more information on the predecessors of mzRecal.
+mzrecal recalibrates mass spectrometry (MS1) data in mzML format, using peptide identifications in mzIdentML. mzRecal uses calibration functions based on the physics of the mass analyzer (FTICR, Orbitrap, TOF). The recalibration procedure was originally developed by Magnus Palmblad [[1]](#1)[[2]](#2). See also [msRecal](https://www.ms-utils.org/Taverna/msRecal.html) and [recal2](http://www.ms-utils.org/recal2.html) for more information on the predecessors of mzRecal.
 Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3). 
 
 Check section [Usage](#usage) for a more complete description.
