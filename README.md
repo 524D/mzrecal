@@ -95,6 +95,8 @@ OPTIONS:
     	max mz error (ppm) for accepting a calibrant for calibration (default 2)
   -ppmuncal float
     	max mz error (ppm) for trying to use calibrant for calibration (default 10)
+  -quiet
+    	Don't print any output except for errors
   -rt string
     	rt window (s) (default "-10.0:10.0")
   -scorefilter string
@@ -105,8 +107,10 @@ OPTIONS:
     	TODO: The default contains reasonable values for some common search engines
     	and post-search scoring software:
     	  MS:1002257 (Comet:expectation value)
+    	  MS:1001330 (X!Tandem:expectation value)
     	  MS:1001159 (SEQUEST:expectation value)
-    	  MS:1002466 (PeptideShaker PSM score) (default "MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001159(0.0:1e-2)")
+    	  MS:1002466 (PeptideShaker PSM score)
+    	  (default "MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)")
   -stage int
     	0: do all calibration stages in one run
     	1: only compute recalibration parameters
@@ -114,6 +118,8 @@ OPTIONS:
     	NOTE: The mzML file that is produced after recalibration does not contain an
     	      index. If an index is required, we recommend post-processing the output file 
     	      with msconvert (http://proteowizard.sourceforge.net/download.html).
+  -verbose
+    	Print more verbose progress information
   -version
     	Show software version
 
@@ -137,12 +143,16 @@ EXECUTION STAGES:
         in a JSON file.
         This stage reads an mzML file and mzID file, matches measured peaks to
         computed m/z values and computes recalibration coefficents using a method
-        that is usefull for the instrument type. The instrument type (and other
+        that is useful for the instrument type. The instrument type (and other
         relavant values) are determined from the CV terms in the input files.
     2) Creating a recalibrated version of the MS file.
         This stage reads the mzML file and JSON file with recalibration values,
         computes recalibrated m/z values for all peaks in spectra for which
         a valid recalibration was found, and writes a recalibrated mzML file.
+
+ENVIRONMENT VARIABLES:
+	When environment variable MZRECAL_DEBUG=1, extra information is added to the
+	JSON file that can help checking the performance of mzrecal. 
 
 USAGE EXAMPLES:
   mzrecal BSA.mzML
@@ -154,7 +164,7 @@ USAGE EXAMPLES:
     Idem, but accept peptides with 20 ppm as potential calibrants, after
     recalibration all accepted peptides must be within 1.5 ppm
 
-  mzrecal -calmult 20
+  mzrecal -calmult 20 BSA.mzML
     Idem, but the number of peaks that are considered for matching are the
     number of potential calibrants times 20
 ```
