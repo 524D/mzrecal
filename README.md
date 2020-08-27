@@ -40,7 +40,7 @@ program from the ProteoWizard toolkit is recommended to add the index.
 Recalibration affects the MS1 spectra as well as the precursor masses of the
 MS2 spectra. Search engines commonly report the difference between theoretical
 mass and measured mass for identified peptides. The following plot shows the
-improvement of mzRecal on a TOF dataset.
+improvement of mzRecal on an Orbitrap and on a TOF dataset.
 ![ppm-histogram](./ppmerr.png)
 
 # Go packages for mzML and mzIdentML
