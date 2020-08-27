@@ -36,49 +36,6 @@ Note that the output mzML file will not contain the index wrapper
 some software). The [msconvert](http://proteowizard.sourceforge.net/download.html)
 program from the ProteoWizard toolkit is recommended to add the index.
 
-The sample below shows the start, middle and end of a .json file with
-recalibration parameters.
-
-```json
-{
-  "MzRecalVersion": "1.0",
-  "RecalMethod": "Orbitrap",
-  "SpecRecalPar": [
-    {
-      "SpecIndex": 0,
-      "P": null,
-      "CalsInRTWindow": 7,
-      "CalsInMassWindow": 0,
-      "CalsUsed": 0
-    },
-...
-    {
-      "SpecIndex": 2135,
-      "P": [
-        9.673208098942699e-8,
-        1.000000105563597
-      ],
-      "CalsInRTWindow": 42,
-      "CalsInMassWindow": 16,
-      "CalsUsed": 14
-    },
-...
-    {
-      "SpecIndex": 8856,
-      "P": [
-        8.562906413578675e-8,
-        1.0000000197806953
-      ],
-      "CalsInRTWindow": 7,
-      "CalsInMassWindow": 4,
-      "CalsUsed": 4
-    }
-  ]
-}
-
-```
-
-
 # Results
 Recalibration affects the MS1 spectra as well as the precursor masses of the
 MS2 spectra. Search engines commonly report the difference between theoretical
