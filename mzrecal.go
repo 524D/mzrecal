@@ -1280,7 +1280,7 @@ peaks are considered for computing the recalibration. <1 means all peaks.`)
 		2.0,
 		`max mz error (ppm) for accepting a calibrant for calibration`)
 	par.scoreFilter = flag.String("scorefilter",
-		"MS:1002466(0.99:)MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)",
+		"MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)",
 		`filter for PSM scores to accept. Format:
 <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
 When multiple score names/CV terms are specified, the first one on the list
@@ -1290,7 +1290,8 @@ and post-search scoring software:
   MS:1002257 (Comet:expectation value)
   MS:1001330 (X!Tandem:expectation value)
   MS:1001159 (SEQUEST:expectation value)
-  MS:1002466 (PeptideShaker PSM score)`)
+  MS:1002466 (PeptideShaker PSM score)
+ `)
 	par.charge = flag.String("charge",
 		"1:5",
 		`charge range of calibrants, or the string "ident". If set to "ident",
