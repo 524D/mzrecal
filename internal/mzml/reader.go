@@ -112,51 +112,54 @@ func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
 		binaryDataPars(binaryDataArray)
 	// We are only interrested in mz and intensity
 	if mzArray || intensityArray {
-		data, err := base64.StdEncoding.DecodeString(binaryDataArray.Binary)
-		if err != nil {
-			return nil, err
-		}
-		if zlibCompression {
-			b := bytes.NewReader(data)
-			z, err := zlib.NewReader(b)
+		// Skip empty data, nothing needs to be done and zlib will cause an error
+		if len(binaryDataArray.Binary) > 0 {
+			data, err := base64.StdEncoding.DecodeString(binaryDataArray.Binary)
 			if err != nil {
 				return nil, err
 			}
-			defer z.Close()
-			d, err := ioutil.ReadAll(z)
-			if err != nil {
-				return nil, err
+			if zlibCompression {
+				b := bytes.NewReader(data)
+				z, err := zlib.NewReader(b)
+				if err != nil {
+					return nil, err
+				}
+				defer z.Close()
+				d, err := ioutil.ReadAll(z)
+				if err != nil {
+					return nil, err
+				}
+				data = d
 			}
-			data = d
-		}
-		if bits64 {
-			cnt := len(data) / 8
-			if mzArray {
-				for i := 0; i < cnt; i++ {
-					bits := binary.LittleEndian.Uint64(data[i*8:])
-					float := math.Float64frombits(bits)
-					p[i].Mz = float64(float)
+			if bits64 {
+				cnt := len(data) / 8
+				if mzArray {
+					for i := 0; i < cnt; i++ {
+						bits := binary.LittleEndian.Uint64(data[i*8:])
+						float := math.Float64frombits(bits)
+						p[i].Mz = float64(float)
+					}
+				} else {
+					for i := 0; i < cnt; i++ {
+						bits := binary.LittleEndian.Uint64(data[i*8:])
+						float := math.Float64frombits(bits)
+						p[i].Intens = float64(float)
+					}
 				}
 			} else {
-				for i := 0; i < cnt; i++ {
-					bits := binary.LittleEndian.Uint64(data[i*8:])
-					float := math.Float64frombits(bits)
-					p[i].Intens = float64(float)
-				}
-			}
-		} else {
-			cnt := len(data) / 4
-			if mzArray {
-				for i := 0; i < cnt; i++ {
-					bits := binary.LittleEndian.Uint32(data[i*4:])
-					float := math.Float32frombits(bits)
-					p[i].Mz = float64(float)
-				}
-			} else {
-				for i := 0; i < cnt; i++ {
-					bits := binary.LittleEndian.Uint32(data[i*4:])
-					float := math.Float32frombits(bits)
-					p[i].Intens = float64(float)
+				cnt := len(data) / 4
+				if mzArray {
+					for i := 0; i < cnt; i++ {
+						bits := binary.LittleEndian.Uint32(data[i*4:])
+						float := math.Float32frombits(bits)
+						p[i].Mz = float64(float)
+					}
+				} else {
+					for i := 0; i < cnt; i++ {
+						bits := binary.LittleEndian.Uint32(data[i*4:])
+						float := math.Float32frombits(bits)
+						p[i].Intens = float64(float)
+					}
 				}
 			}
 		}
