@@ -1285,7 +1285,7 @@ peaks are considered for computing the recalibration. <1 means all peaks.`)
 <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
 When multiple score names/CV terms are specified, the first one on the list
 that matches a score in the input file will be used.
-TODO: The default contains reasonable values for some common search engines
+The default contains reasonable values for some common search engines
 and post-search scoring software:
   MS:1002257 (Comet:expectation value)
   MS:1001330 (X!Tandem:expectation value)
