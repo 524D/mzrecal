@@ -418,6 +418,32 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []identifiedCalibrant) ([]i
 	return cals, nil
 }
 
+// makeChargedCalibrants computes the m/z value for the calibrants
+// defines in parameter specCals for all selected charges states.
+// Equal m/z values (within numerical precission) are merged
+func makeChargedCalibrants(specCals []identifiedCalibrant, par params) ([]calibrant, error) {
+	// Make slice with mz values for all calibrants
+	// For efficiency, pre-allocate (more than) enough elements
+	chargedCalibrants := make([]chargedCalibrant, 0,
+		len(specCals)*(par.maxCharge-par.minCharge+1))
+	for j, cal := range specCals {
+		//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
+		if cal.singleCharged {
+			chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(1, &specCals[j]))
+		} else {
+			if par.useIdentCharge {
+				chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(cal.idCharge, &specCals[j]))
+			} else {
+				for charge := par.minCharge; charge <= par.maxCharge; charge++ {
+					chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(charge, &specCals[j]))
+				}
+			}
+		}
+	}
+	calibrants := mergeSameMzCals(chargedCalibrants)
+	return calibrants, nil
+}
+
 // mergeSameMzCals merges all calibrants that have the same m/z or
 // nearly the same m/z. The m/z of the first calibrant that was encountered
 // is retained. The list of calibrants with their chargestate is appended
@@ -545,6 +571,84 @@ func filterMzCalibs(calibrants *[]calibrant, r mzRange) {
 	}
 }
 
+// genDebugInfo returns info that can be added to the JSON output
+// for debugging/clearifying the recalibration
+func genDebugInfo(calibrants []calibrant, matchingCals []calibrant,
+	calibrantsUsed []int, specIdx int, mzML *mzml.MzML) []specDebugInfo {
+	debugInfo := make([]specDebugInfo, 1, 1)
+	debugInfo[0].CalsInRTWindow = len(calibrants)
+	debugInfo[0].CalsInMassWindow = len(matchingCals)
+	debugInfo[0].CalsUsed = len(calibrantsUsed)
+	iit, _ := mzML.IonInjectionTime(specIdx)
+	if !math.IsNaN(iit) {
+		debugInfo[0].IonInjectionTime = iit
+	}
+	tic, _ := mzML.TotalIonCurrent(specIdx)
+	if !math.IsNaN(tic) {
+		debugInfo[0].TotalIonCurrent = tic
+	}
+	return debugInfo
+}
+
+// computeRecalSpec executes recalibration steps for a single spectrum
+func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
+	specIdx int, recalMethod int, par params) (specRecalParams, error) {
+	var specRecalPar specRecalParams
+	var err error
+
+	// Get the retention time of the current MS1 spectrum
+	retentionTime, err := mzML.RetentionTime(specIdx)
+	if err != nil {
+		return specRecalPar, err
+	}
+
+	// Get the uncharged masses of potential calibrants in the retention
+	// time window
+	specCals, err := calibsInRtWindows(retentionTime+par.lowRT,
+		retentionTime+par.upRT, idCals)
+	if err != nil {
+		return specRecalPar, err
+	}
+
+	// Get the m/z values of potential calibrants, merging equal values
+	calibrants, err := makeChargedCalibrants(specCals, par)
+	if err != nil {
+		return specRecalPar, err
+	}
+
+	// Get the MS1 peaks
+	peaks, err := mzML.ReadScan(specIdx)
+	if err != nil {
+		log.Fatalf("computeRecalSpec ReadScan failed for spectrum %d: %v",
+			specIdx, err)
+	}
+
+	// Remove potential calibrants outside of measured range
+	r := mzRangePeaks(peaks)
+	filterMzCalibs(&calibrants, r)
+
+	// Get the calibrants that match significant MS1 peaks
+	matchingCals := calibrantsMatchPeaks(peaks, calibrants, par)
+
+	// Compute recalibration constants
+	specRecalPar, calibrantsUsed, err := recalibrateSpec(specIdx, recalMethod,
+		matchingCals, par)
+	if err != nil {
+		log.Printf("computeRecalSpec calibration failed for spectrum %d: %v",
+			specIdx, err)
+	}
+	if par.debug {
+		specRecalPar.DebugInfo = genDebugInfo(calibrants, matchingCals,
+			calibrantsUsed, specIdx, mzML)
+	}
+
+	debugLogSpecs(specIdx, mzML.NumSpecs(), retentionTime, peaks, matchingCals, par,
+		calibrantsUsed, recalMethod, specRecalPar)
+	debugRegisterCalUsed(specIdx, matchingCals, par, calibrantsUsed)
+	return specRecalPar, nil
+}
+
+// computeRecal computes the recalibration parameters for the whole mzML file
 func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
@@ -574,92 +678,26 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 	numSpecs := mzML.NumSpecs()
 
 	for i := 0; i < numSpecs; i++ {
-		centroid, err := mzML.Centroid(i)
-		if err != nil {
-			return recal, err
-		}
-		if !centroid {
-			return recal, errors.New(`input mzML file must contain centroid data, not profile data`)
-		}
+		// Only MS1 spectra are used for recalibration
 		msLevel, err := mzML.MSLevel(i)
 		if err != nil {
 			return recal, err
 		}
 		if msLevel == 1 {
-			retentionTime, err := mzML.RetentionTime(i)
+			// Ensure that the spectra are centroided
+			centroid, err := mzML.Centroid(i)
 			if err != nil {
 				return recal, err
 			}
-			specCals, err := calibsInRtWindows(retentionTime+par.lowRT,
-				retentionTime+par.upRT, idCals)
+			if !centroid {
+				return recal, errors.New(`input mzML file must contain centroid data, not profile data`)
+			}
+
+			specRecalPar, err := computeRecalSpec(mzML, idCals, i, recalMethod, par)
 			if err != nil {
 				return recal, err
-			}
-
-			// Make slice with mz values for all calibrants
-			// For efficiency, pre-allocate (more than) enough elements
-			chargedCalibrants := make([]chargedCalibrant, 0,
-				len(specCals)*(par.maxCharge-par.minCharge+1))
-			for j, cal := range specCals {
-				//				log.Printf("Calibrating spec %d, rt %f, calibrants: %+v\n", i, retentionTime, cal)
-				if cal.singleCharged {
-					chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(1, &specCals[j]))
-				} else {
-					if par.useIdentCharge {
-						chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(cal.idCharge, &specCals[j]))
-					} else {
-						for charge := par.minCharge; charge <= par.maxCharge; charge++ {
-							chargedCalibrants = append(chargedCalibrants, newChargedCalibrant(charge, &specCals[j]))
-						}
-					}
-				}
-			}
-			calibrants := mergeSameMzCals(chargedCalibrants)
-
-			peaks, err := mzML.ReadScan(i)
-			if err != nil {
-				log.Fatalf("computeRecal ReadScan failed for spectrum %d: %v",
-					i, err)
-			}
-			// Remove calibrants outside of measured range
-			r := mzRangePeaks(peaks)
-			filterMzCalibs(&calibrants, r)
-
-			matchingCals := calibrantsMatchPeaks(peaks, calibrants, par)
-
-			specRecalPar, calibrantsUsed, err := recalibrateSpec(i, recalMethod,
-				matchingCals, par)
-			if err != nil {
-				log.Printf("computeRecal calibration failed for spectrum %d: %v",
-					i, err)
-			}
-			if par.debug {
-				debugInfo := make([]specDebugInfo, 1, 1)
-				debugInfo[0].CalsInRTWindow = len(calibrants)
-				debugInfo[0].CalsInMassWindow = len(matchingCals)
-				debugInfo[0].CalsUsed = len(calibrantsUsed)
-				iit, err := mzML.IonInjectionTime(i)
-				if err != nil {
-					log.Printf("computeRecal IonInjectionTime failed for spectrum %d: %v",
-						i, err)
-				}
-				if !math.IsNaN(iit) {
-					debugInfo[0].IonInjectionTime = iit
-				}
-				tic, _ := mzML.TotalIonCurrent(i)
-				if !math.IsNaN(tic) {
-					debugInfo[0].TotalIonCurrent = tic
-				}
-				specRecalPar.DebugInfo = debugInfo
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
-
-			debugLogSpecs(i, numSpecs, retentionTime, peaks, matchingCals, par,
-				calibrantsUsed, recalMethod, specRecalPar)
-			debugRegisterCalUsed(i, matchingCals, par, calibrantsUsed)
-
-			// log.Printf("Spec %d retention match %d mz match %d calib used %d",
-			// 	i, len(mzCalibrants), len(mzMatchingCals), calibrantsUsed)
 		}
 	}
 	debugListUnusedCalibrants(idCals)
