@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/524D/mzrecal/internal/mzml"
 )
@@ -16,6 +17,7 @@ var debugSpecs *string // Print debug output for given spectrum range
 
 // Map each calibrant to it's used spectrum id's
 var calUsed4Spec = map[identifiedCalibrant][]int{}
+var calUsed4SpecMux sync.Mutex
 
 func init() {
 	debugSpecs = flag.String("debug", "",
@@ -111,20 +113,24 @@ func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64,
 func debugRegisterCalUsed(i int, matchingCals []calibrant, par params, calibrantsUsed []int) {
 	for _, cu := range calibrantsUsed {
 		mc := matchingCals[cu]
+		calUsed4SpecMux.Lock()
 		for _, cc := range mc.chargedCals {
 			calUsed4Spec[*cc.idCal] = append(calUsed4Spec[*cc.idCal], i)
 		}
+		calUsed4SpecMux.Unlock()
 	}
 }
 
 func debugListUnusedCalibrants(allCals []identifiedCalibrant) {
 	if *debugSpecs != `` {
 		fmt.Printf("Unused calibrants\n")
+		calUsed4SpecMux.Lock()
 		for _, ac := range allCals {
 			_, ok := calUsed4Spec[ac]
 			if !ok {
 				fmt.Printf("%+v mz:%f\n", ac, (ac.mass+float64(ac.idCharge)*massProton)/float64(ac.idCharge))
 			}
 		}
+		calUsed4SpecMux.Unlock()
 	}
 }
