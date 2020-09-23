@@ -23,6 +23,7 @@ import (
 	"github.com/524D/mzrecal/internal/mzidentml"
 	"github.com/524D/mzrecal/internal/mzml"
 )
+import "time"
 
 // Program name and version, appended to software list in mzML output
 const progName = "mzRecal"
@@ -899,12 +900,12 @@ func initRtMs1(mzML mzml.MzML) (rtSpecs, error) {
 	return rtOfMs1Specs, nil
 }
 
-func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
+func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) (int, int, error) {
 
 	var precursorsUpdated, precursorsTotal int
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
 	// Make map to lookup recal parameters for a given spectrum index
@@ -915,14 +916,14 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 
 	rtOfMs1Specs, err := initRtMs1(mzML)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	numSpecs := mzML.NumSpecs()
 	for i := 0; i < numSpecs; i++ {
 		// Only update precursors for MS2
 		MSLevel, err := mzML.MSLevel(i)
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 		if MSLevel == 2 {
 			precursorsTotal++
@@ -935,13 +936,13 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 			// is the correct one.
 			rt, err := mzML.RetentionTime(i)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 			ms1ScanIndex := findRtMs1(rt, rtOfMs1Specs)
 
 			precursors, err := mzML.GetPrecursors(i)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 			for _, precursor := range precursors {
 				recalIndex, ok := specIndex2recalIndex[ms1ScanIndex]
@@ -966,10 +967,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) error {
 			}
 		}
 	}
-	if par.verbosity != infoSilent {
-		fmt.Fprintf(os.Stderr, "MS2 count: %d Updated precursors:%d\n", precursorsTotal, precursorsUpdated)
-	}
-	return nil
+	return precursorsTotal, precursorsUpdated, nil
 }
 
 func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, par params, specNr int) {
@@ -1047,8 +1045,10 @@ func doRecal(par params) {
 func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
 
+	t := time.Now()
+
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Recalibrating spectra\n")
+		fmt.Fprintf(os.Stderr, "Recalibrating spectra: ")
 	}
 
 	for _, specRecalPar := range recal.SpecRecalPar {
@@ -1072,21 +1072,35 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 	mzML.AppendDataProcessing(mzRecalProcessing)
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Updating precursors m/z\n")
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Updating precursors m/z: ")
 	}
 
-	err = updatePrecursorMz(mzML, recal, par)
+	precursorsTotal, precursorsUpdated, err := updatePrecursorMz(mzML, recal, par)
 	if err != nil {
 		log.Fatalf("updatePrecursorMz: %v", err)
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Writing MS data\n")
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+	}
+
+	if par.verbosity != infoSilent {
+		fmt.Fprintf(os.Stderr, "MS2 count: %d Updated precursors:%d\n", precursorsTotal, precursorsUpdated)
+	}
+
+	if par.verbosity == infoVerbose {
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Writing MS data: ")
 	}
 
 	err = writeRecalMzML(mzML, recal, par)
 	if err != nil {
 		log.Fatalf("writeRecalMzML: error return %v", err)
+	}
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
 	}
 }
 
@@ -1095,9 +1109,10 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	if err != nil {
 		log.Fatalf("Invalid parameter 'scoreFilter': %v", err)
 	}
+	t := time.Now()
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Reading identifications from %s\n", *par.mzIdentMlFilename)
+		fmt.Fprintf(os.Stderr, "Reading identifications from %s: ", *par.mzIdentMlFilename)
 	}
 
 	f1, err := os.Open(*par.mzIdentMlFilename)
@@ -1111,7 +1126,9 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Creating initial calibrant list\n")
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Creating initial calibrant list: ")
 	}
 
 	idCals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
@@ -1120,7 +1137,9 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Reading MS data from %s\n", *par.mzIdentMlFilename)
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Reading MS data from %s: ", *par.mzMLFilename)
 	}
 
 	f2, err := os.Open(*par.mzMLFilename)
@@ -1134,7 +1153,9 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Computing recalibration\n")
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Computing recalibration: ")
 	}
 
 	recal, err = computeRecal(&mzML, idCals, par)
@@ -1143,13 +1164,19 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	}
 
 	if par.verbosity == infoVerbose {
-		fmt.Fprintf(os.Stderr, "Writing recalibration coefficients\n")
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+		t = time.Now()
+		fmt.Fprintf(os.Stderr, "Writing recalibration coefficients: ")
 	}
 
 	err = writeRecal(recal, par)
 	if err != nil {
 		log.Fatalf("writeRecal: error return %v", err)
 	}
+	if par.verbosity == infoVerbose {
+		fmt.Fprintf(os.Stderr, "%s\n", time.Since(t))
+	}
+
 	return mzML, recal
 }
 
