@@ -30,7 +30,7 @@ getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
 
 
 
- ## FIXME: temporary, only to test plotting absolute errors   
+## FIXME: temporary, only to test plotting absolute errors   
 #    mzidGoodX=subset(mzidGood, abs(mzErr*1000) < maxPpmErr)
 #    mzidGoodX$ppmErr <- mzidGoodX$mzErr*1000;
 ## End FIXME
@@ -91,7 +91,9 @@ maxPpmErr = opt$options$ppmerr
 mzIdVals <- getMzId(opt$args[1], classNames[1], opt$options$exp, maxPpmErr)
 mzidGood <- mzIdVals$mzidGood
 psms <- mzIdVals$psms
-
+# Keep track of density of error distribution, we need it later
+dens <- list()
+dens[[length(dens)+1]] <- density(mzidGood$ppmErr)
 scores <- data.frame("Class" = classNames[[1]],
                      "Mean" = mean(mzidGood$ppmErr),
                      "SD" = sd(mzidGood$ppmErr),
@@ -100,6 +102,8 @@ scores <- data.frame("Class" = classNames[[1]],
 for (i in c(2:length(opt$args))) {
     mzIdVals <- getMzId(opt$args[i], classNames[i], opt$options$exp, maxPpmErr)
     psms <- c(psms, mzIdVals$psms)
+    dens[[length(dens)+1]] <- density(mzIdVals$mzidGood$ppmErr)
+    # Append the good PSM's (with different class name)
     mzidGood <- rbind(mzidGood, mzIdVals$mzidGood)
     scoresX <- data.frame("Class" = classNames[[i]],
                          "Mean" = mean( mzIdVals$mzidGood$ppmErr),
@@ -118,7 +122,7 @@ print(perfScore[[1]])
 print(scores)
 sink()
 
-# Shuffle rows, so that overlapping points get approximatly fair color in plot
+# Before plotting, shuffle rows so that overlapping points get approximately fair color in plot
 set.seed(42)
 rows <- sample(nrow(mzidGood))
 mzidGood <- mzidGood[rows, ]
@@ -128,10 +132,22 @@ txt1 = paste("n=", psms[1], sep="")
 txt2 = paste("n=", psms[2], sep="")
 massScaleTxt <- "mass error (ppm)";
 # Position of labels with PSMs
-x1<- maxPpmErr*0.7;
-y1<- 0.1;
-x2<- maxPpmErr*0.65;
-y2<- 0.1;
+x1<- dens[[1]]$x[which.max(dens[[1]]$y)]
+y1_top = dens[[1]]$y[which.max(dens[[1]]$y)]
+y1<- y1_top * 0.7;
+x2<- dens[[2]]$x[which.max(dens[[2]]$y)]
+y2_top = dens[[2]]$y[which.max(dens[[2]]$y)]
+y2<- y2_top * 0.7;
+
+# Ensure labels are separated vertically
+if (abs(x1-x2)<0.05 * maxPpmErr) {
+    if (x1 > 0.05 * maxPpmErr) {
+        x1 = x2 - 0.05 * maxPpmErr
+    } else {
+        x2 = x1 + 0.05 * maxPpmErr
+    }
+}
+
 # Special case for files used in publication
 if (str_detect(outputFnBase, "120118ry_201B7-32_2_2")) {
 x1<- -7.1;
@@ -165,6 +181,7 @@ g <- ggplot(mzidGood, aes(x=calculatedMassToCharge, y=ppmErr, colour = class))+
         scale_color_manual(values = colors) +
         geom_smooth(method = "lm")
 
+
 gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
         geom_density() +
         coord_flip() +
@@ -175,7 +192,7 @@ gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
         scale_x_continuous(name=massScaleTxt, limits=c(-maxPpmErr, maxPpmErr)) +
         scale_color_manual(values = colors) +
 #        geom_label(aes(x = x1, y = x1, label = txt1, color=colors[1]), fill = "blue") +
-        annotate(geom="text", x1, y2, label=txt1, color=colors[1]) +
+        annotate(geom="text", x1, y1, label=txt1, color=colors[1]) +
         annotate(geom="text", x2, y2, label=txt2, color=colors[2])
 
 p <- arrangeGrob(gd, g, widths = c(1, 2), ncol=2,
