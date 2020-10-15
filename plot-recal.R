@@ -173,12 +173,9 @@ gd = ggplot(mzidGood, aes(x=ppmErr, colour = class))  +
         geom_density() +
         coord_flip() +
         theme(legend.position = "none",
-#              axis.text.y=element_blank(),    # Only for right side picture in paper (maybe)
-#              axis.ticks.y=element_blank(), # Only for right side picture in paper (maybe)
               text=element_text(size=12, family="sans")) +
         scale_x_continuous(name=massScaleTxt, limits=c(-maxPpmErr, maxPpmErr)) +
         scale_color_manual(values = colors) +
-#        geom_label(aes(x = x1, y = x1, label = txt1, color=colors[1]), fill = "blue") +
         annotate(geom="text", x1, y1, label=txt1, color=colors[1]) +
         annotate(geom="text", x2, y2, label=txt2, color=colors[2])
 
@@ -187,33 +184,6 @@ p <- arrangeGrob(gd, g, widths = c(1, 2), ncol=2,
 
 plotFile <- paste(outputFnBase, ".png", sep="")
 
-# Bioinformatics instruction for autors for figures:
-# Prepare your figures at publication quality resolution, using applications capable
-# of generating high-resolution .tif files (1200 d.p.i. for line drawings and 350 d.p.i.
-# for colour and half-tone artwork). The printing process requires your figures to be in
-# this format if your paper is accepted and printed. Useful information on preparing your
-# figures for publication. For online submission, please also prepare a second version of
-# your figures at low-resolution for use in the review process; these versions of the figures
-# can be saved in .jpg, .gif, .tif or .eps format. For INITIAL submission, it is preferable
-# that you insert the low-resolution versions of the figures and tables into the word processing
-# but you can also upload these versions as separate files.
-
-# Figures are single column, 86 mm column width = 3.3858 inch
-# 2 sub figures next to each other: 1.6929 inch
-# Filling this in below dows not create a usable plot -> rescale later
-
-# ggsave(
-#   plotFile,
-#   plot = p,
-#   device = NULL,
-#   path = NULL,
-#   scale = 1,
-#   width = NA,
-#   height = NA,
-#   units = c("in", "cm", "mm"),
-#   dpi = 300,
-#   limitsize = TRUE,
-# )
 
 ggsave(
   plotFile,
