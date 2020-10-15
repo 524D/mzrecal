@@ -24,19 +24,6 @@ getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
     mzidGood=mzidGood[keeps]
 
     mzidGood$mzErr <- mzidGood$experimentalMassToCharge - mzidGood$calculatedMassToCharge
-
-    # FIXME: Handle the case where precursor is off by one (abs(mzError)= 0.5 or 0.3333 or ...)
-
-
-
-
-## FIXME: temporary, only to test plotting absolute errors   
-#    mzidGoodX=subset(mzidGood, abs(mzErr*1000) < maxPpmErr)
-#    mzidGoodX$ppmErr <- mzidGoodX$mzErr*1000;
-## End FIXME
-
-
-
     mzidGoodX=subset(mzidGood, (1000000.0*abs(mzErr)/calculatedMassToCharge) < maxPpmErr)
     mzidGoodX$ppmErr <- 1000000.0* mzidGoodX$mzErr / mzidGoodX$calculatedMassToCharge
     mzidGoodX$class=className
@@ -134,10 +121,10 @@ massScaleTxt <- "mass error (ppm)";
 # Position of labels with PSMs
 x1<- dens[[1]]$x[which.max(dens[[1]]$y)]
 y1_top = dens[[1]]$y[which.max(dens[[1]]$y)]
-y1<- y1_top * 0.7;
+y1<- y1_top * 0.4;
 x2<- dens[[2]]$x[which.max(dens[[2]]$y)]
 y2_top = dens[[2]]$y[which.max(dens[[2]]$y)]
-y2<- y2_top * 0.7;
+y2<- y2_top * 0.4;
 
 # Ensure labels are separated vertically
 if (abs(x1-x2)<0.05 * maxPpmErr) {
