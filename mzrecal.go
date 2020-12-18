@@ -89,6 +89,9 @@ type params struct {
 	useIdentCharge     bool     // Use only chage as found in identification
 	minCharge          int      // min charge for calibrants
 	maxCharge          int      // max charge for calibrants
+	specFilter         *string  // Range of spectra to recalibrate
+	minSpecIdx         int      // Lowest spectrum index to recalibrate
+	maxSpecIdx         int      // Highest spectrum index to recalibrate
 	verbosity          int      // Verbosity of progress messages (infoDefault...)
 	args               []string // Addtional values passed on the command line
 	debug              bool     // Enable debug info (environment variable MZRECAL_DEBUG=1)
@@ -925,7 +928,8 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) (int, int,
 		if err != nil {
 			return 0, 0, err
 		}
-		if MSLevel == 2 {
+		// Only update MS2 spectra spectra in requested range
+		if MSLevel == 2 && i >= par.minSpecIdx && i <= par.maxSpecIdx {
 			precursorsTotal++
 			// The precursor MS1 spectrum is the one for which we have recalibration
 			// Find the MS1 spctrum that belongs to this MS2, so that
@@ -1055,16 +1059,18 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 		// Skip spectra for which no recalibration coefficients are available
 		if specRecalPar.P != nil {
 			specIndex := specRecalPar.SpecIndex
-			recalPars := setRecalPars(recalMethod, specRecalPar)
-			peaks, err1 := mzML.ReadScan(specIndex)
-			if err1 != nil {
-				log.Fatalf("readRecal: mzML.ReadScan %v", err1)
+			if specIndex >= par.minSpecIdx && specIndex <= par.maxSpecIdx {
+				recalPars := setRecalPars(recalMethod, specRecalPar)
+				peaks, err1 := mzML.ReadScan(specIndex)
+				if err1 != nil {
+					log.Fatalf("readRecal: mzML.ReadScan %v", err1)
+				}
+				for i, peak := range peaks {
+					mzNew := mzRecal(peak.Mz, &recalPars)
+					peaks[i].Mz = mzNew
+				}
+				mzML.UpdateScan(specIndex, peaks, true, false)
 			}
-			for i, peak := range peaks {
-				mzNew := mzRecal(peak.Mz, &recalPars)
-				peaks[i].Mz = mzNew
-			}
-			mzML.UpdateScan(specIndex, peaks, true, false)
 		}
 	}
 
@@ -1228,6 +1234,15 @@ Type %s --help for usage
 			os.Exit(2)
 		}
 	}
+	par.minSpecIdx, par.maxSpecIdx, err = parseIntRange(*par.specFilter,
+		0, math.MaxInt32)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, `Invalid value for parameter 'spec'.
+	Type %s --help for usage
+	`, exeName)
+		os.Exit(2)
+	}
+
 }
 
 func usage() {
@@ -1359,6 +1374,10 @@ and post-search scoring software:
 		"1:5",
 		"charge `range`"+` of calibrants, or the string "ident". If set to "ident",
 only the charge as found in the mzIdentMl file will be used for calibration.`)
+	par.specFilter = flag.String("specfilter",
+		"",
+		"`range`"+` of spectrum indexes to calibrate (e.g. 1000:2000).
+Default is all spectra`)
 	version := flag.Bool("version", false,
 		`Show software version`)
 	verbose := flag.Bool("verbose", false,
