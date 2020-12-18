@@ -358,7 +358,7 @@ func (f *MzML) ScanID(scanIndex int) (string, error) {
 	return "", ErrInvalidScanIndex
 }
 
-// GetPrecursors returns the mzML precursus struct for a given scanIndex
+// GetPrecursors returns the mzML precursors struct for a given scanIndex
 func (f *MzML) GetPrecursors(scanIndex int) ([]XMLprecursor, error) {
 	if scanIndex >= 0 && scanIndex < f.NumSpecs() {
 		var p []XMLprecursor
