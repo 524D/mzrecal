@@ -1,4 +1,6 @@
 // Based on MSRECAL/RECAL_FUNCTIONS.C
+// We use qsort_r, which is a GNU extension
+#define _GNU_SOURCE
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -359,6 +361,99 @@ static void init_cal_params(cal_params_t *cal_params, calib_method_t calib_metho
     cal_params->nr_cal_pars = get_nr_cal_pars(calib_method);
 }
 
+// recal_err_rel computes the relative mass error of a calibrant
+// after recalibration
+static double recal_err_rel(calibrant_t *calibrant,
+                            cal_params_t *cal_params) {
+    return (calibrant->mz_calc-mz_recalX(calibrant->mz_meas, cal_params))/
+            calibrant->mz_calc;
+}
+
+// compare_mzrecal_err compared (in qsort sense) the relative mass error
+// of 2 calibrants after recalibration 
+static int compare_mzrecal_err(const void *i, const void *j, void *arg) {
+    cal_params_t *cal_params = (cal_params_t *)arg;
+
+	double erri = recal_err_rel((calibrant_t *)i, cal_params);
+	double errj = recal_err_rel((calibrant_t *)j, cal_params);
+
+	if ((errj - erri) > 0)
+		return -1;
+	else if ((errj - erri) < 0)
+		return 1;
+	return 0;
+}
+
+// remove_outliers_mzQC removes outliers according to the definition of mzQC
+// (https://github.com/HUPO-PSI/mzQC/blob/bulk-cvterms/cv/qc-cv.obo)
+static int remove_outliers_mzQC(recal_data_t *d, cal_params_t *cal_params, int debug) {
+    int satisfied = 0;
+    // Sort calibrants by error
+    qsort_r(d->calibrants, d->n_calibrants, sizeof(calibrant_t), compare_mzrecal_err, cal_params);
+
+    // mzQC definition of outliers used Q1, Q3 and IQR of the distribution,
+    // compute them here
+    int q1_i1, q1_i2;
+    // Special case: for < 6 calibrants, adapt method for mzQC to work well
+    if (d->n_calibrants < 6) {
+        // For less than 4 calibrants, we omit outlier detection
+        if (d->n_calibrants < 4) {
+            satisfied = 1;
+            return 1;
+        }
+        // For 4 to 5 calibrants, we use Q1 and Q3 are based on values 1 position from extreme
+        else {
+            q1_i1 = 1; 
+            q1_i2 = 1;
+        }
+    }
+    else {
+        int nq1 = d->n_calibrants/2; // count of samples that Q1 is based on (odd numbers are rounded down)
+        q1_i1 = (nq1-1)/2; // index 1 of the median of upper half
+        q1_i2 = nq1/2; // index 2 of the median of upper half (for odd number of samples in upper half)
+    }
+    double q1 = (recal_err_rel(&(d->calibrants[q1_i1]), cal_params) +
+            recal_err_rel(&(d->calibrants[q1_i2]), cal_params))/2;
+    int q3_i1 = d->n_calibrants - q1_i1 -1;
+    int q3_i2 = d->n_calibrants - q1_i2 -1;
+    double q3 = (recal_err_rel(&(d->calibrants[q3_i1]), cal_params) +
+            recal_err_rel(&(d->calibrants[q3_i2]), cal_params))/2;
+    double iqr = q3-q1;
+    // Compute outlier limits according to mzQC definition
+    double ol_low_lim = q1 - 1.5 * iqr;
+    double ol_high_lim = q3 + 1.5 * iqr;
+    // Remove outliers
+    // and recalibrate (as long as we have at least min_cal peaks)
+    int accepted_idx = 0;
+    for(int j=0; j<d->n_calibrants; j++) {
+        double rel_err = recal_err_rel(&(d->calibrants[j]), cal_params);
+        if (debug) {
+            char s[3] = "  \0";
+            if ( (j==q1_i1) || (j==q3_i1) ) {
+                s[0] = '*';
+            }
+            if ( (j==q1_i2) || (j==q3_i2) ) {
+                s[1] = '*';
+            }
+            printf("%d rel_err=%e %s\n", j, rel_err, s);
+        }
+        if ( (rel_err>=ol_low_lim) && (rel_err<=ol_high_lim)) {
+            d->calibrants[accepted_idx++] = d->calibrants[j];
+        }
+    }
+    if (debug) {
+        printf("q1_i1=%d q1_i2=%d q3_i1=%d q3_i2=%d q1=%e q3=%e iqr=%e ol_low_lim=%e ol_high_lim=%e\n",
+               q1_i1, q1_i2, q3_i1, q3_i2, q1, q3, iqr, ol_low_lim, ol_high_lim);
+    }
+
+    // If all (remaining) calibrants are accepted, we are done
+    if (accepted_idx == d->n_calibrants) {
+        satisfied=1; // all calibrants < internal_calibration_target
+    }
+    d->n_calibrants=accepted_idx;
+    return satisfied;
+}
+
 cal_params_t recalibratePeaks(recal_data_t *d,
                               int min_cal,
                               double internal_calibration_target,
@@ -418,26 +513,34 @@ cal_params_t recalibratePeaks(recal_data_t *d,
         chi = gsl_blas_dnrm2(s->f);
         gsl_multifit_fdfsolver_free(s);
 
-        // OK, that was one internal recalibration, now lets check if all calibrants are < internal_calibration_target, if not, throw these out
-        // and recalibrate (as long as we have at least min_cal peaks)
-        int accepted_idx = 0;
-        if (debug) printf("Remaining calibrants: \n");
-        for(j=0; j<d->n_calibrants; j++) {
-            double mz_calc = d->calibrants[j].mz_calc;
-            double mz_meas = d->calibrants[j].mz_meas;
-            double mz_recal = mz_recalX(mz_meas, &cal_params);
-            if (debug)
-                printf("mz_calc=%f mz_meas=%f mz_recal=%f errppm=%f accept=%d\n", mz_calc, mz_meas, mz_recal,
-                 1000000*((mz_calc-mz_recal)/mz_calc), (int)(fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target));
-            if (fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target) {
-                d->calibrants[accepted_idx++] = d->calibrants[j];
+        // remove outliers
+
+        // If no explicit max error is specified, we use mzQC definition of outlier
+        // (https://github.com/HUPO-PSI/mzQC/blob/bulk-cvterms/cv/qc-cv.obo)
+        if (internal_calibration_target == 0.0) {
+            satisfied = remove_outliers_mzQC(d, &cal_params, debug);
+        }
+        else {
+            int accepted_idx = 0;
+            // check if all calibrants are < internal_calibration_target, if not, throw these out
+            // and recalibrate (as long as we have at least min_cal peaks)
+            for(j=0; j<d->n_calibrants; j++) {
+                double mz_calc = d->calibrants[j].mz_calc;
+                double mz_meas = d->calibrants[j].mz_meas;
+                double mz_recal = mz_recalX(mz_meas, &cal_params);
+                if (debug)
+                    printf("mz_calc=%f mz_meas=%f mz_recal=%f errppm=%f accept=%d\n", mz_calc, mz_meas, mz_recal,
+                    1000000*((mz_calc-mz_recal)/mz_calc), (int)(fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target));
+                if (fabs((mz_calc-mz_recal)/mz_calc)<internal_calibration_target) {
+                    d->calibrants[accepted_idx++] = d->calibrants[j];
+                }
             }
+            // If all (remaining) calibrants are accepted, we are done
+            if (accepted_idx == d->n_calibrants) {
+                satisfied=1; // all calibrants < internal_calibration_target
+            }
+            d->n_calibrants=accepted_idx;
         }
-        // If all (remaining) calibrants are accepted, we are done
-        if (accepted_idx == d->n_calibrants) {
-            satisfied=1; // all calibrants < internal_calibration_target
-        }
-        d->n_calibrants=accepted_idx;
     }
     cal_params.n_calibrants = d->n_calibrants;
     if (!satisfied) {

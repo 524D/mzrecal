@@ -1263,9 +1263,9 @@ EXECUTION STAGES:
     1) Computation of recalibration coefficients. The coefficients are stored
         in a JSON file.
         This stage reads an mzML file and mzID file, matches measured peaks to
-        computed m/z values and computes recalibration coefficents using a method
+        computed m/z values and computes recalibration coefficients using a method
         that is useful for the instrument type. The instrument type (and other
-        relavant values) are determined from the CV terms in the input files.
+        relevant values) are determined from the CV terms in the input files.
     2) Creating a recalibrated version of the MS file.
         This stage reads the mzML file and JSON file with recalibration values,
         computes recalibrated m/z values for all peaks in spectra for which
@@ -1342,8 +1342,10 @@ peaks are considered for computing the recalibration. <1 means all peaks.`)
 		10.0,
 		`max mz error (ppm) for trying to use calibrant for calibration`)
 	par.mzTargetPPM = flag.Float64("ppmcal",
-		2.0,
-		`max mz error (ppm) for accepting a calibrant for calibration`)
+		0.0,
+		`0 (default): remove outlier calibrants according to HUPO-PSI mzQC,
+   the rest is accepted.
+> 0: max mz error (ppm) for accepting a calibrant for calibration`)
 	par.scoreFilter = flag.String("scorefilter",
 		"MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)",
 		`filter for PSM scores to accept. Format:
