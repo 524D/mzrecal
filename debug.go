@@ -21,7 +21,7 @@ var calUsed4SpecMux sync.Mutex
 
 func init() {
 	debugSpecs = flag.String("debug", "",
-		`Print debug output for given spectrum range e.g. 3:6`)
+		"Print debug output for given spectrum `range` e.g. 3:6")
 }
 
 func debugLogSpecs(i int, numSpecs int, retentionTime float64,

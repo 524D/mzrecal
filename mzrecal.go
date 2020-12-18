@@ -1276,19 +1276,15 @@ ENVIRONMENT VARIABLES:
 	JSON file that can help checking the performance of %s. 
 
 USAGE EXAMPLES:
-  %s BSA.mzML
-    Recalibrate BSA.mzML using identifications in BSA.mzid, write recalibrated
-    result to BSA-recal.mzML and write recalibration coefficients BSA-recal.json.
+  %s yeast.mzML
+    Recalibrate yeast.mzML using identifications in yeast.mzid, write recalibrated
+    result to yeast-recal.mzML and write recalibration coefficients yeast-recal.json.
     Default parameters are used. 
 
-  %s -ppmuncal 20 -ppmcal 1.5 BSA.mzML
-    Idem, but accept peptides with 20 ppm as potential calibrants, after
-    recalibration all accepted peptides must be within 1.5 ppm
-
-  %s -calmult 20 BSA.mzML
-    Idem, but the number of peaks that are considered for matching are the
-    number of potential calibrants times 20
-`, exeName, exeName, exeName, exeName)
+  %s -ppmuncal 20 -scorefilter 'MS:1002257(0.0:0.001)' yeast.mzML
+    Idem, but accept peptides with 20 ppm mass error and Comet expectation value <0.001
+    as potential calibrants
+`, exeName, exeName, exeName)
 }
 
 func main() {
@@ -1297,14 +1293,14 @@ func main() {
 
 	par.recalMethod = flag.String("func",
 		"",
-		`recalibration function to apply. If empty, a suitable
+		"recalibration `function`"+` to apply. If empty, a suitable
 function is determined from the instrument specified in the mzML file.
 Valid function names:
     FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-    POLY<N>: Polynomial with degee <N> (range 1:5)
+    POLY<N>: Polynomial with degree <N> (range 1:5)
     OFFSET: Constant m/z offset per spectrum.`)
 	par.stage = flag.Int("stage", 0,
-		`0: do all calibration stages in one run
+		`0 (default): do all calibration stages in one run
 1: only compute recalibration parameters
 2: perform recalibration using previously computer parameters
 NOTE: The mzML file that is produced after recalibration does not contain an
@@ -1312,21 +1308,21 @@ NOTE: The mzML file that is produced after recalibration does not contain an
       with msconvert (http://proteowizard.sourceforge.net/download.html).`)
 	par.mzMLRecalFilename = flag.String("o",
 		"",
-		`filename of recalibrated mzML`)
+		"`filename` of recalibrated mzML")
 	par.mzIdentMlFilename = flag.String("mzid",
 		"",
-		`mzIdentMl filename`)
+		"mzIdentMl `filename`")
 	par.calFilename = flag.String("cal",
 		"",
-		`filename for output of computed calibration parameters`)
+		"`filename` for output of computed calibration parameters")
 	par.emptyNonCalibrated = flag.Bool("empty-non-calibrated", false,
 		`Empty MS2 spectra for which the precursor was not recalibrated.`)
 	par.minCal = flag.Int("mincals",
 		0,
 		`minimum number of calibrants a spectrum should have to be recalibrated.
-If 0, the minimum number of calibrants is set to the smallest number needed
-for the choosen recalibration function plus one. In any other case, is the
-specified number is too low for the calibration function, it is increased to
+If 0 (default), the minimum number of calibrants is set to the smallest number
+needed for the chosen recalibration function plus one. In any other case, if
+the specified number is too low for the calibration function, it is increased to
 the minimum needed value.`)
 	par.calPeaks = flag.Int("calmult",
 		10,
@@ -1334,10 +1330,10 @@ the minimum needed value.`)
 peaks are considered for computing the recalibration. <1 means all peaks.`)
 	par.minPeak = flag.Float64("minpeak",
 		0.0,
-		`minimum peak intensity to consider for computing the recalibration.`)
+		`minimum peak intensity to consider for computing the recalibration. (default 0)`)
 	par.rtWindow = flag.String("rt",
 		"-10.0:10.0",
-		`rt window (s)`)
+		"rt window `range`(s)")
 	par.mzErrPPM = flag.Float64("ppmuncal",
 		10.0,
 		`max mz error (ppm) for trying to use calibrant for calibration`)
@@ -1361,7 +1357,7 @@ and post-search scoring software:
  `)
 	par.charge = flag.String("charge",
 		"1:5",
-		`charge range of calibrants, or the string "ident". If set to "ident",
+		"charge `range`"+` of calibrants, or the string "ident". If set to "ident",
 only the charge as found in the mzIdentMl file will be used for calibration.`)
 	version := flag.Bool("version", false,
 		`Show software version`)
