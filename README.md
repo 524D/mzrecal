@@ -60,68 +60,73 @@ USAGE:
   using peptide identifications in an accompanying mzID file.
 
 OPTIONS:
-  -cal string
-    	filename for output of computed calibration parameters
+  -cal filename
+    filename for output of computed calibration parameters
   -calmult int
-    	only the topmost (<calmult> * <number of potential calibrants>)
-    	peaks are considered for computing the recalibration. <1 means all peaks. (default 10)
-  -charge string
-    	charge range of calibrants, or the string "ident". If set to "ident",
-    	only the charge as found in the mzIdentMl file will be used for calibration. (default "1:5")
-  -debug string
-    	Print debug output for given spectrum range e.g. 3:6
+      only the topmost (<calmult> * <number of potential calibrants>)
+      peaks are considered for computing the recalibration. <1 means all peaks. (default 10)
+  -charge range
+      charge range of calibrants, or the string "ident". If set to "ident",
+      only the charge as found in the mzIdentMl file will be used for calibration. (default "1:5")
+  -debug range
+      Print debug output for given spectrum range e.g. 3:6
   -empty-non-calibrated
-    	Empty MS2 spectra for which the precursor was not recalibrated.
-  -func string
-    	recalibration function to apply. If empty, a suitable
-    	function is determined from the instrument specified in the mzML file.
-    	Valid function names:
-    	    FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-    	    POLY<N>: Polynomial with degee <N> (range 1:5)
-    	    OFFSET: Constant m/z offset per spectrum.
+      Empty MS2 spectra for which the precursor was not recalibrated.
+  -func function
+      recalibration function to apply. If empty, a suitable
+      function is determined from the instrument specified in the mzML file.
+      Valid function names:
+          FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
+          POLY<N>: Polynomial with degree <N> (range 1:5)
+          OFFSET: Constant m/z offset per spectrum.
   -mincals int
-    	minimum number of calibrants a spectrum should have to be recalibrated.
-    	If 0, the minimum number of calibrants is set to the smallest number needed
-    	for the choosen recalibration function plus one. In any other case, is the
-    	specified number is too low for the calibration function, it is increased to
-    	the minimum needed value.
+      minimum number of calibrants a spectrum should have to be recalibrated.
+      If 0 (default), the minimum number of calibrants is set to the smallest number
+      needed for the chosen recalibration function plus one. In any other case, if
+      the specified number is too low for the calibration function, it is increased to
+      the minimum needed value.
   -minpeak float
-    	minimum peak intensity to consider for computing the recalibration.
-  -mzid string
-    	mzIdentMl filename
-  -o string
-    	filename of recalibrated mzML
+      minimum peak intensity to consider for computing the recalibration. (default 0)
+  -mzid filename
+      mzIdentMl filename
+  -o filename
+      filename of recalibrated mzML
   -ppmcal float
-    	max mz error (ppm) for accepting a calibrant for calibration (default 2)
+      0 (default): remove outlier calibrants according to HUPO-PSI mzQC,
+       the rest is accepted.
+      > 0: max mz error (ppm) for accepting a calibrant for calibration
   -ppmuncal float
-    	max mz error (ppm) for trying to use calibrant for calibration (default 10)
+      max mz error (ppm) for trying to use calibrant for calibration (default 10)
   -quiet
-    	Don't print any output except for errors
-  -rt string
-    	rt window (s) (default "-10.0:10.0")
+      Don't print any output except for errors
+  -rt range
+      rt window range(s) (default "-10.0:10.0")
   -scorefilter string
-    	filter for PSM scores to accept. Format:
-    	<CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
-    	When multiple score names/CV terms are specified, the first one on the list
-    	that matches a score in the input file will be used.
-    	TODO: The default contains reasonable values for some common search engines
-    	and post-search scoring software:
-    	  MS:1002257 (Comet:expectation value)
-    	  MS:1001330 (X!Tandem:expectation value)
-    	  MS:1001159 (SEQUEST:expectation value)
-    	  MS:1002466 (PeptideShaker PSM score)
-    	  (default "MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)")
+      filter for PSM scores to accept. Format:
+      <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
+      When multiple score names/CV terms are specified, the first one on the list
+      that matches a score in the input file will be used.
+      The default contains reasonable values for some common search engines
+      and post-search scoring software:
+        MS:1002257 (Comet:expectation value)
+        MS:1001330 (X!Tandem:expectation value)
+        MS:1001159 (SEQUEST:expectation value)
+        MS:1002466 (PeptideShaker PSM score)
+        (default "MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)")
+  -specfilter range
+      range of spectrum indexes to calibrate (e.g. 1000:2000).
+      Default is all spectra
   -stage int
-    	0: do all calibration stages in one run
-    	1: only compute recalibration parameters
-    	2: perform recalibration using previously computer parameters
-    	NOTE: The mzML file that is produced after recalibration does not contain an
-    	      index. If an index is required, we recommend post-processing the output file 
-    	      with msconvert (http://proteowizard.sourceforge.net/download.html).
+      0 (default): do all calibration stages in one run
+      1: only compute recalibration parameters
+      2: perform recalibration using previously computer parameters
+      NOTE: The mzML file that is produced after recalibration does not contain an
+          index. If an index is required, we recommend post-processing the output file 
+          with msconvert (http://proteowizard.sourceforge.net/download.html).
   -verbose
-    	Print more verbose progress information
+      Print more verbose progress information
   -version
-    	Show software version
+      Show software version
 
 BUILD-IN CALIBRANTS:
   In addition to the identified peptides, mzrecal will also use
@@ -142,31 +147,27 @@ EXECUTION STAGES:
     1) Computation of recalibration coefficients. The coefficients are stored
         in a JSON file.
         This stage reads an mzML file and mzID file, matches measured peaks to
-        computed m/z values and computes recalibration coefficents using a method
+        computed m/z values and computes recalibration coefficients using a method
         that is useful for the instrument type. The instrument type (and other
-        relavant values) are determined from the CV terms in the input files.
+        relevant values) are determined from the CV terms in the input files.
     2) Creating a recalibrated version of the MS file.
         This stage reads the mzML file and JSON file with recalibration values,
         computes recalibrated m/z values for all peaks in spectra for which
         a valid recalibration was found, and writes a recalibrated mzML file.
 
 ENVIRONMENT VARIABLES:
-	When environment variable MZRECAL_DEBUG=1, extra information is added to the
-	JSON file that can help checking the performance of mzrecal. 
+  When environment variable MZRECAL_DEBUG=1, extra information is added to the
+  JSON file that can help checking the performance of mzrecal. 
 
 USAGE EXAMPLES:
-  mzrecal BSA.mzML
-    Recalibrate BSA.mzML using identifications in BSA.mzid, write recalibrated
-    result to BSA-recal.mzML and write recalibration coefficients BSA-recal.json.
+  mzrecal yeast.mzML
+    Recalibrate yeast.mzML using identifications in yeast.mzid, write recalibrated
+    result to yeast-recal.mzML and write recalibration coefficients yeast-recal.json.
     Default parameters are used. 
 
-  mzrecal -ppmuncal 20 -ppmcal 1.5 BSA.mzML
-    Idem, but accept peptides with 20 ppm as potential calibrants, after
-    recalibration all accepted peptides must be within 1.5 ppm
-
-  mzrecal -calmult 20 BSA.mzML
-    Idem, but the number of peaks that are considered for matching are the
-    number of potential calibrants times 20
+  mzrecal -ppmuncal 20 -scorefilter 'MS:1002257(0.0:0.001)' yeast.mzML
+    Idem, but accept peptides with 20 ppm mass error and Comet expectation value <0.001
+    as potential calibrants
 ```
 
 # Acknowledgements
