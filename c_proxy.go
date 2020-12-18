@@ -31,7 +31,6 @@ func recalibrateSpec(specIndex int, recalMethod int,
 	recalData.calib_method = C.calib_method_t(recalMethod)
 	recalData.n_calibrants = C.int(len(mzCalibrants))
 	recalData.calibrants = calibrantList
-	// Aim to calibrate to half the specified mass error
 	internalCalibrationTarget := *par.mzTargetPPM / 1000000.0
 	cDebug := 0
 	//	if specIndex >= 1994 && specIndex <= 2000 {
