@@ -370,8 +370,12 @@ static double recal_err_rel(calibrant_t *calibrant,
 }
 
 // compare_mzrecal_err compared (in qsort sense) the relative mass error
-// of 2 calibrants after recalibration 
+// of 2 calibrants after recalibration
+#if (defined _WIN32 || defined _WIN64 || defined __WINDOWS__) 
+static int compare_mzrecal_err(void *arg, const void *i, const void *j) {
+#else
 static int compare_mzrecal_err(const void *i, const void *j, void *arg) {
+#endif
     cal_params_t *cal_params = (cal_params_t *)arg;
 
 	double erri = recal_err_rel((calibrant_t *)i, cal_params);
@@ -389,7 +393,11 @@ static int compare_mzrecal_err(const void *i, const void *j, void *arg) {
 static int remove_outliers_mzQC(recal_data_t *d, cal_params_t *cal_params, int debug) {
     int satisfied = 0;
     // Sort calibrants by error
+#if (defined _WIN32 || defined _WIN64 || defined __WINDOWS__) 
+    qsort_s(d->calibrants, d->n_calibrants, sizeof(calibrant_t), compare_mzrecal_err, cal_params);
+#else
     qsort_r(d->calibrants, d->n_calibrants, sizeof(calibrant_t), compare_mzrecal_err, cal_params);
+#endif
 
     // mzQC definition of outliers used Q1, Q3 and IQR of the distribution,
     // compute them here
