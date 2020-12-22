@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script build mzRecal on Windows
+# Check README.md for required software
 
 # Obtain the version number from GIT
 VERSION=$(git describe --abbrev --dirty --always --tags)

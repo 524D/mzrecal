@@ -1,27 +1,50 @@
-# What does mzRecal do?
+# mzRecal
+
+## What does mzRecal do?
+
 mzrecal recalibrates mass spectrometry (MS1) data in mzML format, using peptide identifications in mzIdentML. mzRecal uses calibration functions based on the physics of the mass analyzer (FTICR, Orbitrap, TOF). The recalibration procedure was originally developed by Magnus Palmblad [[1]](#1)[[2]](#2). See also [msRecal](https://www.ms-utils.org/Taverna/msRecal.html) and [recal2](http://www.ms-utils.org/recal2.html) for more information on the predecessors of mzRecal.
 Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3). 
 
 Check section [Usage](#usage) for a more complete description.
 
-# Running mzRecal
+## Running mzRecal
+
 Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from https://github.com/524D/mzrecal/releases. These executables have no external dependencies.
 
-# Compiling
+## Compiling
+
 The core of the program is written in [Go](https://golang.org/). A relatively
 small part is written in the C language, this is required to access the GSL
 library which is used to compute the recalibration parameters.
 
-On Ubuntu 20.04, to install the prerequisites and download/build the code:
+### Linux
 
-```
+On Ubuntu 20.04, to install the prerequisites and download/build the executable (both for Linux and for Windows):
+
+``` bash
 sudo apt install golang gcc libgsl-dev git
-go get -ldflags '-extldflags "-static"' github.com/524D/mzrecal
+go get -d github.com/524D/mzrecal
+cd go/src/github.com/524D/mzrecal; ./build.sh
 ```
 
-The resulting executable program can then be found at `~/go/bin/mzrecal`.
+The executables are put in folder `~/tools`
 
-# Input and output
+### Windows
+
+On Windows, to install the prerequisites and download/build the executable (for Windows only):
+
+* [install Go](https://golang.org/doc/install) using default install options
+* [Install tdm-gcc C compiler](https://jmeubank.github.io/tdm-gcc/) (MinGW-w64 based version) using default install options
+* [Install git](https://git-scm.com/download/win/) using default install options
+* Restart Windows to add newly installed software to the PATH
+* Open git bash (from the Windows start menu)
+* Get mzRecal. From git bash prompt: `go get -d github.com/524D/mzrecal`
+* Build mzRecal. From git bash prompt: `cd go/src/github.com/524D/mzrecal; ./build_windows.sh`
+
+The executable is put in folder `go/src/github.com/524D/mzrecal` (relative to the users home directory)
+
+## Input and output
+
 mzRecal uses file formats specified by the Proteomics Standards Initiative 
 (PSI), notably [mzML](http://www.psidev.info/mzML) and [mzIdentML](http://www.psidev.info/mzidentml).
 
@@ -36,19 +59,21 @@ Note that the output mzML file will not contain the index wrapper
 some software). The [msconvert](http://proteowizard.sourceforge.net/download.html)
 program from the ProteoWizard toolkit is recommended to add the index.
 
-# Results
+## Results
+
 Recalibration affects the MS1 spectra as well as the precursor masses of the
 MS2 spectra. Search engines commonly report the difference between theoretical
 mass and measured mass for identified peptides. The following plot shows the
 improvement of mzRecal on an Orbitrap and on a TOF dataset.
 ![ppm-histogram](./ppmerr.png)
 
-# Go packages for mzML and mzIdentML
+## Go packages for mzML and mzIdentML
+
 The current version of the code embeds two internal Go packages, one for reading
 mzIdentML and one for reading/writing mzML files. These packages will likely
 be split into a separate module at a later time.
 
-# <a name="usage"></a>Usage
+## <a name="usage"></a>Usage
 
 The following is printed by running mzrecal -help
 
@@ -61,72 +86,69 @@ USAGE:
 
 OPTIONS:
   -cal filename
-    filename for output of computed calibration parameters
+        filename for output of computed calibration parameters
   -calmult int
-      only the topmost (<calmult> * <number of potential calibrants>)
-      peaks are considered for computing the recalibration. <1 means all peaks. (default 10)
+        only the topmost (<calmult> * <number of potential calibrants>)
+        peaks are considered for computing the recalibration. <1 means all peaks. (default 10)
   -charge range
-      charge range of calibrants, or the string "ident". If set to "ident",
-      only the charge as found in the mzIdentMl file will be used for calibration. (default "1:5")
+        charge range of calibrants, or the string "ident". If set to "ident",
+        only the charge as found in the mzIdentMl file will be used for calibration. (default "1:5")
   -debug range
-      Print debug output for given spectrum range e.g. 3:6
+        Print debug output for given spectrum range e.g. 3:6
   -empty-non-calibrated
-      Empty MS2 spectra for which the precursor was not recalibrated.
+        Empty MS2 spectra for which the precursor was not recalibrated.
   -func function
-      recalibration function to apply. If empty, a suitable
-      function is determined from the instrument specified in the mzML file.
-      Valid function names:
-          FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
-          POLY<N>: Polynomial with degree <N> (range 1:5)
-          OFFSET: Constant m/z offset per spectrum.
+        recalibration function to apply. If empty, a suitable
+        function is determined from the instrument specified in the mzML file.
+        Valid function names:
+            FTICR, TOF, Orbitrap: Calibration function suitable for these instruments.
+            POLY<N>: Polynomial with degree <N> (range 1:5)
+            OFFSET: Constant m/z offset per spectrum.
   -mincals int
-      minimum number of calibrants a spectrum should have to be recalibrated.
-      If 0 (default), the minimum number of calibrants is set to the smallest number
-      needed for the chosen recalibration function plus one. In any other case, if
-      the specified number is too low for the calibration function, it is increased to
-      the minimum needed value.
+        minimum number of calibrants a spectrum should have to be recalibrated.
+        If 0 (default), the minimum number of calibrants is set to the smallest number
+        needed for the chosen recalibration function plus one. In any other case, if
+        the specified number is too low for the calibration function, it is increased to
+        the minimum needed value.
   -minpeak float
-      minimum peak intensity to consider for computing the recalibration. (default 0)
+        minimum peak intensity to consider for computing the recalibration. (default 0)
   -mzid filename
-      mzIdentMl filename
+        mzIdentMl filename
   -o filename
-      filename of recalibrated mzML
+        filename of recalibrated mzML
   -ppmcal float
-      0 (default): remove outlier calibrants according to HUPO-PSI mzQC,
-       the rest is accepted.
-      > 0: max mz error (ppm) for accepting a calibrant for calibration
+        0 (default): remove outlier calibrants according to HUPO-PSI mzQC,
+           the rest is accepted.
+        > 0: max mz error (ppm) for accepting a calibrant for calibration
   -ppmuncal float
-      max mz error (ppm) for trying to use calibrant for calibration (default 10)
+        max mz error (ppm) for trying to use calibrant for calibration (default 10)
   -quiet
-      Don't print any output except for errors
+        Don't print any output except for errors
   -rt range
-      rt window range(s) (default "-10.0:10.0")
+        rt window range(s) (default "-10.0:10.0")
   -scorefilter string
-      filter for PSM scores to accept. Format:
-      <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
-      When multiple score names/CV terms are specified, the first one on the list
-      that matches a score in the input file will be used.
-      The default contains reasonable values for some common search engines
-      and post-search scoring software:
-        MS:1002257 (Comet:expectation value)
-        MS:1001330 (X!Tandem:expectation value)
-        MS:1001159 (SEQUEST:expectation value)
-        MS:1002466 (PeptideShaker PSM score)
-        (default "MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)")
+        filter for PSM scores to accept. Format:
+        <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
+        When multiple score names/CV terms are specified, the first one on the list
+        that matches a score in the input file will be used.
+        The default contains reasonable values for some common search engines
+        and post-search scoring software:
+          MS:1002257 (Comet:expectation value)
+          MS:1001330 (X!Tandem:expectation value)
+          MS:1001159 (SEQUEST:expectation value)
+          MS:1002466 (PeptideShaker PSM score)
+          (default "MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)")
   -specfilter range
-      range of spectrum indexes to calibrate (e.g. 1000:2000).
-      Default is all spectra
+        range of spectrum indices to calibrate (e.g. 1000:2000).
+        Default is all spectra
   -stage int
-      0 (default): do all calibration stages in one run
-      1: only compute recalibration parameters
-      2: perform recalibration using previously computer parameters
-      NOTE: The mzML file that is produced after recalibration does not contain an
-          index. If an index is required, we recommend post-processing the output file 
-          with msconvert (http://proteowizard.sourceforge.net/download.html).
+        0 (default): do all calibration stages in one run
+        1: only compute recalibration parameters
+        2: perform recalibration using previously computer parameters
   -verbose
-      Print more verbose progress information
+        Print more verbose progress information
   -version
-      Show software version
+        Show software version
 
 BUILD-IN CALIBRANTS:
   In addition to the identified peptides, mzrecal will also use
@@ -141,23 +163,9 @@ BUILD-IN CALIBRANTS:
      cyclosiloxane11 (814.206705)
      cyclosiloxane12 (888.225496)
 
-EXECUTION STAGES:
-    Recalibration consists of 2 stages. By default they are executed consequtively,
-    but it is also possible to execute them seperately by specifying the -stage flag:
-    1) Computation of recalibration coefficients. The coefficients are stored
-        in a JSON file.
-        This stage reads an mzML file and mzID file, matches measured peaks to
-        computed m/z values and computes recalibration coefficients using a method
-        that is useful for the instrument type. The instrument type (and other
-        relevant values) are determined from the CV terms in the input files.
-    2) Creating a recalibrated version of the MS file.
-        This stage reads the mzML file and JSON file with recalibration values,
-        computes recalibrated m/z values for all peaks in spectra for which
-        a valid recalibration was found, and writes a recalibrated mzML file.
-
 ENVIRONMENT VARIABLES:
-  When environment variable MZRECAL_DEBUG=1, extra information is added to the
-  JSON file that can help checking the performance of mzrecal. 
+    When environment variable MZRECAL_DEBUG=1, extra information is added to the
+    JSON file that can help checking the performance of mzrecal. 
 
 USAGE EXAMPLES:
   mzrecal yeast.mzML
@@ -168,15 +176,24 @@ USAGE EXAMPLES:
   mzrecal -ppmuncal 20 -scorefilter 'MS:1002257(0.0:0.001)' yeast.mzML
     Idem, but accept peptides with 20 ppm mass error and Comet expectation value <0.001
     as potential calibrants
+
+NOTES:
+    The mzML file that is produced after recalibration does not contain an index. If an
+    index is required, we recommend post-processing the output file with msconvert
+    (http://proteowizard.sourceforge.net/download.html).
 ```
 
-# Acknowledgements
+
+## Acknowledgements
+
 The authors gratefully acknowledge prior contributions from co-authors and collaborators in the development and testing of prior installments of the software. 
 
-# Funding
+## Funding
+
 mzRecal was made possible in part due to funding from the ELIXIR Implementation Study "Crowd-sourcing the annotation of public proteomics datasets to improve data reusability".
 
-# References
+## References
+
 <a id="1">[1]</a> Palmblad M, Bindschedler LV, Gibson TM, Cramer R (2006). 
 Automatic internal calibration in liquid chromatography/Fourier transform ion cyclotron resonance mass spectrometry of protein digests. 
 *Rapid Commun. Mass Spectrom.* 2006;20(20):3076-80.

@@ -403,7 +403,7 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 
 func calibsInRtWindows(rtMin, rtMax float64, allCals []identifiedCalibrant) ([]identifiedCalibrant, error) {
 
-	// Find the indexes of the calibrants within the retention time window
+	// Find the indices of the calibrants within the retention time window
 	i1 := sort.Search(len(allCals), func(i int) bool { return allCals[i].retentionTime >= rtMin })
 	i2 := sort.Search(len(allCals), func(i int) bool { return allCals[i].retentionTime > rtMax })
 
@@ -774,7 +774,7 @@ func calibrantsMatchPeaks(peaks []mzml.Peak, calibrants []calibrant,
 // If no peak was found, peak.intensity will be 0
 func maxPeakInMzWindow(mzMin, mzMax float64, peaks []mzml.Peak) mzml.Peak {
 
-	// Find the indexes of the calibrants within the retention time window
+	// Find the indices of the calibrants within the retention time window
 	i1 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz >= mzMin })
 	i2 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz > mzMax })
 
@@ -1272,23 +1272,9 @@ BUILD-IN CALIBRANTS:
 
 	fmt.Fprintf(os.Stderr,
 		`
-EXECUTION STAGES:
-    Recalibration consists of 2 stages. By default they are executed consequtively,
-    but it is also possible to execute them seperately by specifying the -stage flag:
-    1) Computation of recalibration coefficients. The coefficients are stored
-        in a JSON file.
-        This stage reads an mzML file and mzID file, matches measured peaks to
-        computed m/z values and computes recalibration coefficients using a method
-        that is useful for the instrument type. The instrument type (and other
-        relevant values) are determined from the CV terms in the input files.
-    2) Creating a recalibrated version of the MS file.
-        This stage reads the mzML file and JSON file with recalibration values,
-        computes recalibrated m/z values for all peaks in spectra for which
-        a valid recalibration was found, and writes a recalibrated mzML file.
-
 ENVIRONMENT VARIABLES:
-	When environment variable MZRECAL_DEBUG=1, extra information is added to the
-	JSON file that can help checking the performance of %s. 
+    When environment variable MZRECAL_DEBUG=1, extra information is added to the
+    JSON file that can help checking the performance of %s. 
 
 USAGE EXAMPLES:
   %s yeast.mzML
@@ -1299,6 +1285,11 @@ USAGE EXAMPLES:
   %s -ppmuncal 20 -scorefilter 'MS:1002257(0.0:0.001)' yeast.mzML
     Idem, but accept peptides with 20 ppm mass error and Comet expectation value <0.001
     as potential calibrants
+
+NOTES:
+    The mzML file that is produced after recalibration does not contain an index. If an
+    index is required, we recommend post-processing the output file with msconvert
+    (http://proteowizard.sourceforge.net/download.html).
 `, exeName, exeName, exeName)
 }
 
@@ -1317,10 +1308,7 @@ Valid function names:
 	par.stage = flag.Int("stage", 0,
 		`0 (default): do all calibration stages in one run
 1: only compute recalibration parameters
-2: perform recalibration using previously computer parameters
-NOTE: The mzML file that is produced after recalibration does not contain an
-      index. If an index is required, we recommend post-processing the output file 
-      with msconvert (http://proteowizard.sourceforge.net/download.html).`)
+2: perform recalibration using previously computer parameters`)
 	par.mzMLRecalFilename = flag.String("o",
 		"",
 		"`filename` of recalibrated mzML")
@@ -1376,7 +1364,7 @@ and post-search scoring software:
 only the charge as found in the mzIdentMl file will be used for calibration.`)
 	par.specFilter = flag.String("specfilter",
 		"",
-		"`range`"+` of spectrum indexes to calibrate (e.g. 1000:2000).
+		"`range`"+` of spectrum indices to calibrate (e.g. 1000:2000).
 Default is all spectra`)
 	version := flag.Bool("version", false,
 		`Show software version`)
