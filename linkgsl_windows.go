@@ -4,7 +4,7 @@ package main
 // Static link gsl library
 
 /*
-#cgo LDFLAGS: -Lgsl-windows/install/lib/
+#cgo LDFLAGS: -Lwindows/gsl/lib/
 #cgo LDFLAGS: -l:libgsl.a
 #cgo LDFLAGS: -l:libgslcblas.a
 #cgo LDFLAGS: -lm
