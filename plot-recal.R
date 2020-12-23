@@ -158,7 +158,7 @@ g <- ggplot(mzidGood, aes(x=calculatedMassToCharge, y=ppmErr, colour = class))+
         theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
-        geom_point(size=1, alpha = 0.2) +
+        geom_point(size=0.6, alpha = 0.2) +
         theme(text=element_text(size=12, family="sans"),
               legend.title=element_blank(),
               legend.background = element_rect(fill=alpha('white', 0.0)),
