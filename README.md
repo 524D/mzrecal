@@ -39,7 +39,7 @@ On Windows, to install the prerequisites and download/build the executable (for 
 * Restart Windows to add newly installed software to the PATH
 * Open git bash (from the Windows start menu)
 * Get mzRecal. From git bash prompt: `go get -d github.com/524D/mzrecal`
-* Build mzRecal. From git bash prompt: `cd go/src/github.com/524D/mzrecal; ./build_windows.sh`
+* Build mzRecal. From git bash prompt: `cd ${GOPATH}/src/github.com/524D/mzrecal; ./build_windows.sh`
 
 The executable is put in folder `go/src/github.com/524D/mzrecal` (relative to the users home directory)
 
