@@ -9,7 +9,7 @@ Check section [Usage](#usage) for a more complete description.
 
 ## Running mzRecal
 
-Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from https://github.com/524D/mzrecal/releases. These executables have no external dependencies.
+Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from https://github.com/524D/mzrecal/releases/latest (under "assets"). These executables have no external dependencies.
 
 ## Compiling
 
@@ -21,7 +21,7 @@ library which is used to compute the recalibration parameters.
 
 On Ubuntu 20.04, to install the prerequisites and download/build the executable (both for Linux and for Windows):
 
-``` bash
+```bash
 sudo apt install golang gcc libgsl-dev git
 go get -d github.com/524D/mzrecal
 cd go/src/github.com/524D/mzrecal; ./build.sh
