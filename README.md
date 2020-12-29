@@ -3,13 +3,13 @@
 ## What does mzRecal do?
 
 mzrecal recalibrates mass spectrometry (MS1) data in mzML format, using peptide identifications in mzIdentML. mzRecal uses calibration functions based on the physics of the mass analyzer (FTICR, Orbitrap, TOF). The recalibration procedure was originally developed by Magnus Palmblad [[1]](#1)[[2]](#2). See also [msRecal](https://www.ms-utils.org/Taverna/msRecal.html) and [recal2](http://www.ms-utils.org/recal2.html) for more information on the predecessors of mzRecal.
-Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3). 
+Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3).
 
 Check section [Usage](#usage) for a more complete description.
 
 ## Running mzRecal
 
-Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from https://github.com/524D/mzrecal/releases/latest (under "assets"). These executables have no external dependencies.
+Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downloaded from <https://github.com/524D/mzrecal/releases/latest> (under "assets"). These executables have no external dependencies.
 
 ## Compiling
 
@@ -27,7 +27,7 @@ go get -d github.com/524D/mzrecal
 cd go/src/github.com/524D/mzrecal; ./build.sh
 ```
 
-The executables are put in folder `~/tools`
+The executables are put in folder `~/tools`.
 
 ### Windows
 
@@ -41,17 +41,17 @@ On Windows, to install the prerequisites and download/build the executable (for 
 * Get mzRecal. From git bash prompt: `go get -d github.com/524D/mzrecal`
 * Build mzRecal. From git bash prompt: `cd ${GOPATH}/src/github.com/524D/mzrecal; ./build_windows.sh`
 
-The executable is put in folder `go/src/github.com/524D/mzrecal` (relative to the users home directory)
+The executable is put in folder `go/src/github.com/524D/mzrecal` (relative to the users home directory).
 
 ## Input and output
 
-mzRecal uses file formats specified by the Proteomics Standards Initiative 
+mzRecal uses file formats specified by the Proteomics Standards Initiative
 (PSI), notably [mzML](http://www.psidev.info/mzML) and [mzIdentML](http://www.psidev.info/mzidentml).
 
 For recalibration, a peak-picked mzML file and corresponding
 mzIdentML (file extension .mzid) file are needed as input.
 Running `mzrecal` produces a recalibrated mzML file, plus a file with recalibration
-parameters (.json format). The latter can be used to manually inspect 
+parameters (.json format). The latter can be used to manually inspect
 the calibration for each spectrum.
 
 Note that the output mzML file will not contain the index wrapper
@@ -186,7 +186,7 @@ NOTES:
 
 ## Acknowledgements
 
-The authors gratefully acknowledge prior contributions from co-authors and collaborators in the development and testing of prior installments of the software. 
+The authors gratefully acknowledge prior contributions from co-authors and collaborators in the development and testing of prior installments of the software.
 
 ## Funding
 
@@ -194,14 +194,14 @@ mzRecal was made possible in part due to funding from the ELIXIR Implementation 
 
 ## References
 
-<a id="1">[1]</a> Palmblad M, Bindschedler LV, Gibson TM, Cramer R (2006). 
+<a id="1">[1]</a> Palmblad M, Bindschedler LV, Gibson TM, Cramer R (2006).
 Automatic internal calibration in liquid chromatography/Fourier transform ion cyclotron resonance mass spectrometry of protein digests. 
 *Rapid Commun. Mass Spectrom.* 2006;20(20):3076-80.
 
 <a id="2">[2]</a> Palmblad M, van der Burgt YEM, Dalebout H, Derks RJE, Schoenmaker B, Deelder AM (2009).
-Improving mass measurement accuracy in mass spectrometry based proteomics by combining open source tools for chromatographic alignment and internal calibration. 
+Improving mass measurement accuracy in mass spectrometry based proteomics by combining open source tools for chromatographic alignment and internal calibration.
 *J. Proteomics.* 2009;72(4):722-4.
 
-<a id="3">[3]</a> de Bruin JS, Deelder AM,  Palmblad M, (2012). 
-Scientific workflow management in proteomics. 
+<a id="3">[3]</a> de Bruin JS, Deelder AM,  Palmblad M, (2012).
+Scientific workflow management in proteomics.
 *Mol. Cell. Proteomics.* 2012 Jul;11(7):M111.010595.
