@@ -23,8 +23,8 @@ On Ubuntu 20.04, to install the prerequisites and download/build the executable 
 
 ```bash
 sudo apt install golang gcc libgsl-dev git
-go get -d github.com/524D/mzrecal
-cd go/src/github.com/524D/mzrecal; ./build.sh
+git clone https://github.com/524D/mzrecal
+cd mzrecal; ./build.sh
 ```
 
 The executables are put in folder `~/tools`.
@@ -38,10 +38,8 @@ On Windows, to install the prerequisites and download/build the executable (for 
 * [Install git](https://git-scm.com/download/win/) using default install options
 * Restart Windows to add newly installed software to the PATH
 * Open git bash (from the Windows start menu)
-* Get mzRecal. From git bash prompt: `go get -d github.com/524D/mzrecal`
-* Build mzRecal. From git bash prompt: `cd ${GOPATH}/src/github.com/524D/mzrecal; ./build_windows.sh`
-
-The executable is put in folder `go/src/github.com/524D/mzrecal` (relative to the users home directory).
+* Get mzRecal. From git bash prompt: `git clone https://github.com/524D/mzrecal`
+* Build mzRecal. From git bash prompt: `cd mzrecal; ./build_windows.sh`.
 
 ## Input and output
 
