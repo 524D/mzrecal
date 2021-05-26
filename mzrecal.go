@@ -602,6 +602,30 @@ func recalErrRel(mzCalibrant calibrant, recalMethod calibType, p []float64) floa
 	return (mzCalibrant.mz - mzRecal(mzCalibrant.mzMeasured, recalMethod, p)) / mzCalibrant.mz
 }
 
+// Remove calibrants with relative error outside range
+func removeOutliersPPM(mzCalibrants []calibrant, recalMethod calibType, p []float64,
+	olLowLim float64, olHighLim float64) ([]calibrant, bool) {
+
+	acceptedIdx := 0
+	satisfied := false
+	for _, mzCalibrant := range mzCalibrants {
+		relErr := recalErrRel(mzCalibrant, recalMethod, p)
+		if (relErr >= olLowLim) && (relErr <= olHighLim) {
+			mzCalibrants[acceptedIdx] = mzCalibrant
+			acceptedIdx++
+		}
+	}
+
+	// If all (remaining) calibrants are accepted, we are done
+	if acceptedIdx == len(mzCalibrants) {
+		satisfied = true // all calibrants < internal_calibration_target
+	}
+	mzCalibrants = mzCalibrants[:acceptedIdx] // Shorten list of calibrants if needed
+	return mzCalibrants, satisfied
+}
+
+// Remove calibrants that are outliers according to mzQC specification mzQC
+// (The HUPO-PSI Quality Control Working Group, 2020)
 func removeOutliersMzQC(mzCalibrants []calibrant, recalMethod calibType, p []float64, debug bool) ([]calibrant, bool) {
 
 	satisfied := false
@@ -641,12 +665,10 @@ func removeOutliersMzQC(mzCalibrants []calibrant, recalMethod calibType, p []flo
 	// Compute outlier limits according to mzQC definition
 	olLowLim := q1 - 1.5*iqr
 	olHighLim := q3 + 1.5*iqr
-	// Remove outliers
 
-	acceptedIdx := 0
-	for j, mzCalibrant := range mzCalibrants {
-		relErr := recalErrRel(mzCalibrant, recalMethod, p)
-		if debug {
+	if debug {
+		for j, mzCalibrant := range mzCalibrants {
+			relErr := recalErrRel(mzCalibrant, recalMethod, p)
 			s1 := ' '
 			if (j == q1i1) || (j == q3i1) {
 				s1 = '*'
@@ -657,27 +679,24 @@ func removeOutliersMzQC(mzCalibrants []calibrant, recalMethod calibType, p []flo
 			}
 			fmt.Printf("%d rel_err=%e %c%c\n", j, relErr, s1, s2)
 		}
-		if (relErr >= olLowLim) && (relErr <= olHighLim) {
-			mzCalibrants[acceptedIdx] = mzCalibrant
-			acceptedIdx++
-		}
 	}
+
+	// Remove outliers
+	mzCalibrants, satisfied = removeOutliersPPM(mzCalibrants, recalMethod, p, olLowLim, olHighLim)
+
 	if debug {
 		fmt.Printf("q1_i1=%d q1_i2=%d q3_i1=%d q3_i2=%d q1=%e q3=%e iqr=%e ol_low_lim=%e ol_high_lim=%e\n",
 			q1i1, q1i2, q3i1, q3i2, q1, q3, iqr, olLowLim, olHighLim)
 	}
 
-	// If all (remaining) calibrants are accepted, we are done
-	if acceptedIdx == len(mzCalibrants) {
-		satisfied = true // all calibrants < internal_calibration_target
-	}
-	mzCalibrants = mzCalibrants[:acceptedIdx] // Shorten list of calibrants if needed
 	return mzCalibrants, satisfied
 }
 
+// Compute recalibration parameters that best fit the calibrants
 func recalibrateSpec(specIndex int, recalMethod calibType,
 	mzCalibrants []calibrant, par params) (
 	specRecalParams, []int, error) {
+
 	var specRecalPar specRecalParams
 	specRecalPar.SpecIndex = specIndex
 	var p []float64
@@ -701,13 +720,22 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 		// Set initial calibration constants
 		pIn := make([]float64, getNrCalPars(recalMethod))
 		pIn[1] = 1.0 // For all calibration methods, parameter 1 is 1.0, rest is 0.0
-		// Computer parameters for optimal fit
+		// Compute parameters for optimal fit
 		calParams, err := optimize.Minimize(problem, pIn, nil, &optimize.NelderMead{})
 		if err != nil {
 			return specRecalPar, nil, err
 		}
 		p = calParams.X
-		mzCalibrants, satisfied = removeOutliersMzQC(mzCalibrants, recalMethod, p, par.debug)
+		if *par.mzTargetPPM > 0.0 {
+			// If fixed PPM error is defined,
+			// remove outliers that are out of range
+			mzCalibrants, satisfied =
+				removeOutliersPPM(mzCalibrants, recalMethod, p,
+					-(*par.mzTargetPPM), *par.mzTargetPPM)
+		} else {
+			mzCalibrants, satisfied =
+				removeOutliersMzQC(mzCalibrants, recalMethod, p, par.debug)
+		}
 
 	}
 	var calibrantsUsed []int // FIX ME: superfluous and only used for debugging, return mzCalibrants instead
@@ -728,6 +756,7 @@ func mzRecalPolyN(mzMeas float64, p []float64, degree int) float64 {
 	return mzCalib
 }
 
+// Compute the recalibrated mz according to calibration parameters
 func mzRecal(mzMeas float64, recalMethod calibType, p []float64) float64 {
 	var mzCalib float64
 	switch recalMethod {
@@ -765,6 +794,8 @@ func mzRecal(mzMeas float64, recalMethod calibType, p []float64) float64 {
 	return mzCalib
 }
 
+// getNrCalPars returns the number of calibration parameters
+// for the given calibration method
 func getNrCalPars(recalMethod calibType) int {
 	switch recalMethod {
 	case calibFTICR:
