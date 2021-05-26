@@ -19,11 +19,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/524D/mzrecal/internal/mzidentml"
 	"github.com/524D/mzrecal/internal/mzml"
+
+	"gonum.org/v1/gonum/optimize"
+	//	flag "github.com/spf13/pflag"
 )
-import "time"
 
 // Program name and version, appended to software list in mzML output
 const progName = "mzRecal"
@@ -48,8 +51,10 @@ const cvOrbiTrapSpectrometer = `MS:1000484`
 
 // The calibration types that we can handle
 // WARNING: This must be consistent with C enum calib_method_t in gsl_wrapper.go
+type calibType int
+
 const (
-	calibNone = iota
+	calibNone calibType = iota
 	calibFTICR
 	calibTOF
 	calibOrbitrap
@@ -484,7 +489,7 @@ func newChargedCalibrant(charge int, idCal *identifiedCalibrant) chargedCalibran
 	return chargedCal
 }
 
-func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
+func instrument2RecalMethod(mzML *mzml.MzML) (calibType, string, error) {
 	instruments, err := mzML.MSInstruments()
 	if err != nil {
 		return 0, ``, err
@@ -504,8 +509,8 @@ func instrument2RecalMethod(mzML *mzml.MzML) (int, string, error) {
 	return calibPoly2, `POLY2`, nil
 }
 
-func recalMethodStr2Int(recalMethodStr string) (int, error) {
-	var recalMethod int
+func recalMethodStr2Int(recalMethodStr string) (calibType, error) {
+	var recalMethod calibType
 	switch strings.ToUpper(recalMethodStr) {
 	case `FTICR`:
 		recalMethod = calibFTICR
@@ -594,9 +599,196 @@ func genDebugInfo(calibrants []calibrant, matchingCals []calibrant,
 	return debugInfo
 }
 
+func recalErrRel(mzCalibrant calibrant, recalMethod calibType, p []float64) float64 {
+	return (mzCalibrant.mz - mzRecal(mzCalibrant.mzMeasured, recalMethod, p)) / mzCalibrant.mz
+}
+
+func removeOutliersMzQC(mzCalibrants []calibrant, recalMethod calibType, p []float64, debug bool) ([]calibrant, bool) {
+
+	satisfied := false
+	// Sort calibrants by error
+	// FIXME: speed up by computing errors for each calibrant outside sort
+	sort.Slice(mzCalibrants, func(i, j int) bool {
+		mzCali := mzRecal(mzCalibrants[i].mzMeasured, recalMethod, p)
+		mzCalj := mzRecal(mzCalibrants[j].mzMeasured, recalMethod, p)
+		erri := mzCalibrants[i].mz - mzCali
+		errj := mzCalibrants[j].mz - mzCalj
+		return erri < errj
+	})
+
+	// mzQC definition of outliers uses Q1, Q3 and IQR of the distribution,
+	// compute them here
+	var q1i1, q1i2 int
+	// Special case: for < 6 calibrants, adapt method for mzQC to work well
+	if len(mzCalibrants) < 6 {
+		// For less than 4 calibrants, we omit outlier detection
+		if len(mzCalibrants) < 4 {
+			return mzCalibrants, true
+		} else {
+			// For 4 to 5 calibrants, we use for Q1 and Q3 the values values 1 position from extreme
+			q1i1 = 1
+			q1i2 = 1
+		}
+	} else {
+		nq1 := len(mzCalibrants) / 2 // count of samples that Q1 is based on (odd numbers are rounded down)
+		q1i1 = (nq1 - 1) / 2         // index 1 of the median of upper half
+		q1i2 = nq1 / 2               // index 2 of the median of upper half (for odd number of samples in upper half)
+	}
+	q1 := (recalErrRel(mzCalibrants[q1i1], recalMethod, p) + recalErrRel(mzCalibrants[q1i2], recalMethod, p)) / 2
+	q3i1 := len(mzCalibrants) - q1i1 - 1
+	q3i2 := len(mzCalibrants) - q1i2 - 1
+	q3 := (recalErrRel(mzCalibrants[q3i1], recalMethod, p) + recalErrRel(mzCalibrants[q3i2], recalMethod, p)) / 2
+	iqr := q3 - q1
+	// Compute outlier limits according to mzQC definition
+	olLowLim := q1 - 1.5*iqr
+	olHighLim := q3 + 1.5*iqr
+	// Remove outliers
+
+	acceptedIdx := 0
+	for j, mzCalibrant := range mzCalibrants {
+		relErr := recalErrRel(mzCalibrant, recalMethod, p)
+		if debug {
+			s1 := ' '
+			if (j == q1i1) || (j == q3i1) {
+				s1 = '*'
+			}
+			s2 := ' '
+			if (j == q1i2) || (j == q3i2) {
+				s2 = '*'
+			}
+			fmt.Printf("%d rel_err=%e %c%c\n", j, relErr, s1, s2)
+		}
+		if (relErr >= olLowLim) && (relErr <= olHighLim) {
+			mzCalibrants[acceptedIdx] = mzCalibrant
+			acceptedIdx++
+		}
+	}
+	if debug {
+		fmt.Printf("q1_i1=%d q1_i2=%d q3_i1=%d q3_i2=%d q1=%e q3=%e iqr=%e ol_low_lim=%e ol_high_lim=%e\n",
+			q1i1, q1i2, q3i1, q3i2, q1, q3, iqr, olLowLim, olHighLim)
+	}
+
+	// If all (remaining) calibrants are accepted, we are done
+	if acceptedIdx == len(mzCalibrants) {
+		satisfied = true // all calibrants < internal_calibration_target
+	}
+	mzCalibrants = mzCalibrants[:acceptedIdx] // Shorten list of calibrants if needed
+	return mzCalibrants, satisfied
+}
+
+func recalibrateSpec(specIndex int, recalMethod calibType,
+	mzCalibrants []calibrant, par params) (
+	specRecalParams, []int, error) {
+	var specRecalPar specRecalParams
+	specRecalPar.SpecIndex = specIndex
+	var p []float64
+
+	problem := optimize.Problem{
+		Func: func(x []float64) float64 {
+			sumOfResiduals := float64(0.0)
+
+			for _, cal := range mzCalibrants {
+				mzCalib := mzRecal(cal.mzMeasured, recalMethod, x)
+				diff := mzCalib - cal.mz
+				sumOfResiduals += diff * diff
+			}
+
+			return math.Sqrt(sumOfResiduals)
+		},
+	}
+
+	satisfied := false
+	for !satisfied && (len(mzCalibrants) >= *par.minCal) {
+		calParams, err := optimize.Minimize(problem, []float64{0, 1}, nil, &optimize.NelderMead{})
+		if err != nil {
+			return specRecalPar, nil, err
+		}
+		p = calParams.X
+		mzCalibrants, satisfied = removeOutliersMzQC(mzCalibrants, recalMethod, p, par.debug)
+
+	}
+	var calibrantsUsed []int // FIX ME: superfluous and only used for debugging, return mzCalibrants instead
+	if !satisfied {
+		return specRecalPar, nil, nil
+	}
+	specRecalPar.P = p
+	return specRecalPar, calibrantsUsed, nil
+}
+
+func mzRecalPolyN(mzMeas float64, p []float64, degree int) float64 {
+	mp := float64(1.0)
+	mzCalib := float64(0.0)
+	for i := 0; i <= degree; i++ {
+		mzCalib += p[i] * mp
+		mp *= mzMeas
+	}
+	return mzCalib
+}
+
+func mzRecal(mzMeas float64, recalMethod calibType, p []float64) float64 {
+	var mzCalib float64
+	switch recalMethod {
+	case calibFTICR:
+		// mzCalib = Ca/((1/mzMeas)-Cb)
+		mzCalib = (p[1]) / ((1 / mzMeas) - (p[0]))
+	case calibTOF:
+		mzCalib = p[2]*math.Sqrt(mzMeas) + p[1]*mzMeas + p[0]
+	case calibOrbitrap:
+		{
+			// mzCalib = A/((f-B)^2) =
+			//      A / ((1/sqrt(mzMeas))-B)^2
+			a := p[1]
+			b := p[0]
+
+			freq := float64(1.0) / math.Sqrt(mzMeas)
+			fb := freq - b
+			mzCalib = a / (fb * fb)
+		}
+	case calibOffset:
+		mzCalib = mzMeas + p[0]
+	case calibPoly1:
+		mzCalib = mzRecalPolyN(mzMeas, p, 1)
+	case calibPoly2:
+		mzCalib = mzRecalPolyN(mzMeas, p, 2)
+	case calibPoly3:
+		mzCalib = mzRecalPolyN(mzMeas, p, 3)
+	case calibPoly4:
+		mzCalib = mzRecalPolyN(mzMeas, p, 4)
+	case calibPoly5:
+		mzCalib = mzRecalPolyN(mzMeas, p, 5)
+	default:
+		mzCalib = mzMeas
+	}
+	return mzCalib
+}
+
+func getNrCalPars(recalMethod calibType) int {
+	switch recalMethod {
+	case calibFTICR:
+		return 2
+	case calibTOF:
+		return 3
+	case calibOrbitrap:
+		return 2
+	case calibOffset:
+		return 1
+	case calibPoly1:
+		return 2
+	case calibPoly2:
+		return 3
+	case calibPoly3:
+		return 4
+	case calibPoly4:
+		return 5
+	case calibPoly5:
+		return 6
+	}
+	return 0
+}
+
 // computeRecalSpec executes recalibration steps for a single spectrum
 func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
-	specIdx int, recalMethod int, par params) (specRecalParams, error) {
+	specIdx int, recalMethod calibType, par params) (specRecalParams, error) {
 	var specRecalPar specRecalParams
 	var err error
 
@@ -656,7 +848,7 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
 	var recal recalParams
 	var err error
-	var recalMethod int
+	var recalMethod calibType
 
 	recal.MzRecalVersion = outputFormatVersion
 	if *par.recalMethod == `` {
@@ -955,10 +1147,8 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) (int, int,
 						ms1ScanIndex)
 				}
 				if ok && recal.SpecRecalPar[recalIndex].P != nil {
-					specRecalPar := recal.SpecRecalPar[recalIndex]
-					recalPars := setRecalPars(recalMethod, specRecalPar)
-					recalIsolationWindow(&precursor, &recalPars, par, i)
-					if recalSelectedIons(&precursor, &recalPars, par, i, numSpecs) {
+					recalIsolationWindow(&precursor, recalMethod, recal.SpecRecalPar[recalIndex].P, par, i)
+					if recalSelectedIons(&precursor, recalMethod, recal.SpecRecalPar[recalIndex].P, par, i, numSpecs) {
 						precursorsUpdated++
 					}
 				} else {
@@ -974,7 +1164,8 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) (int, int,
 	return precursorsTotal, precursorsUpdated, nil
 }
 
-func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, par params, specNr int) {
+func recalIsolationWindow(precursor *mzml.XMLprecursor, recalMethod calibType,
+	p []float64, par params, specNr int) {
 	isolationWindow := precursor.IsolationWindow
 	for k, cvParam := range isolationWindow.CvPar {
 		if cvParam.Accession == cvIsolationWindowTargetMz {
@@ -983,7 +1174,7 @@ func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, pa
 				log.Printf("Invalid mz value %s (spec %d)",
 					cvParam.Value, specNr)
 			} else {
-				mzNew := mzRecal(mz, recalPars)
+				mzNew := mzRecal(mz, recalMethod, p)
 				isolationWindow.CvPar[k].Value =
 					strconv.FormatFloat(mzNew, 'f', 8, 64)
 				break
@@ -992,7 +1183,7 @@ func recalIsolationWindow(precursor *mzml.XMLprecursor, recalPars *CalParams, pa
 	}
 }
 
-func recalSelectedIons(precursor *mzml.XMLprecursor, recalPars *CalParams,
+func recalSelectedIons(precursor *mzml.XMLprecursor, recalMethod calibType, p []float64,
 	par params, specNr int, numSpecs int) bool {
 	var updated bool
 	for _, selectedIon := range precursor.SelectedIonList.SelectedIon {
@@ -1003,7 +1194,7 @@ func recalSelectedIons(precursor *mzml.XMLprecursor, recalPars *CalParams,
 					log.Printf("Invalid mz value %s (spec %d)",
 						cvParam.Value, specNr)
 				} else {
-					mzNew := mzRecal(mz, recalPars)
+					mzNew := mzRecal(mz, recalMethod, p)
 					selectedIon.CvPar[k].Value =
 						strconv.FormatFloat(mzNew, 'f', 8, 64)
 					debugLogPrecursorUpdate(specNr, numSpecs, mz, mzNew, par)
@@ -1060,13 +1251,12 @@ func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
 		if specRecalPar.P != nil {
 			specIndex := specRecalPar.SpecIndex
 			if specIndex >= par.minSpecIdx && specIndex <= par.maxSpecIdx {
-				recalPars := setRecalPars(recalMethod, specRecalPar)
 				peaks, err1 := mzML.ReadScan(specIndex)
 				if err1 != nil {
 					log.Fatalf("readRecal: mzML.ReadScan %v", err1)
 				}
 				for i, peak := range peaks {
-					mzNew := mzRecal(peak.Mz, &recalPars)
+					mzNew := mzRecal(peak.Mz, recalMethod, specRecalPar.P)
 					peaks[i].Mz = mzNew
 				}
 				mzML.UpdateScan(specIndex, peaks, true, false)

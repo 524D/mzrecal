@@ -26,7 +26,7 @@ func init() {
 
 func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 	peaks []mzml.Peak, matchingCals []calibrant, par params,
-	calibrantsUsed []int, recalMethod int, specRecalPar specRecalParams) {
+	calibrantsUsed []int, recalMethod calibType, specRecalPar specRecalParams) {
 
 	if *debugSpecs != `` {
 		debugMin, debugMax, _ := parseIntRange(*debugSpecs, 0, numSpecs)
@@ -40,8 +40,6 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 				isCalibrantUsed[j] = true
 			}
 
-			recalPar := setRecalPars(recalMethod, specRecalPar)
-
 			fmt.Printf("Spectrum:%d rt:%f\n", i, retentionTime)
 			var mzRecalRelSum float64
 			var mzRecalRelCount int
@@ -52,7 +50,7 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 				if exists {
 					mzMatchingCal := matchingCals[k]
 					mzRel := 100000000.0 * (p.Mz/mzMatchingCal.mz - 1.0) / (*par.mzErrPPM)
-					mzRecal := mzRecal(p.Mz, &recalPar)
+					mzRecal := mzRecal(p.Mz, recalMethod, specRecalPar.P)
 					mzRecalRel := 100000000.0 * (mzRecal/mzMatchingCal.mz - 1.0) / (*par.mzTargetPPM)
 					used := `-`
 					if isCalibrantUsed[k] {
