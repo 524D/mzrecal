@@ -6,9 +6,8 @@ mkdir -p $TARGET_DIR
 VERSION=$(git describe --abbrev --dirty --always --tags)
 VERSION=${VERSION#"v"}
 
-echo 'Building mzrecal for Linux'
-go build -a -ldflags "-extldflags \"-static\" -X main.progVersion=${VERSION}" -o $TARGET_DIR/mzrecal
+echo 'Building mzrecal for Linux/amd64'
+GOOS=linux GOARCH=amd64 go build -a -ldflags "-extldflags \"-static\" -X main.progVersion=${VERSION}" -o $TARGET_DIR/mzrecal
 
-## Cross-build for Windows (64 bit)
-echo 'Building mzrecal for Windows'
+echo 'Building mzrecal for Windows/amd64'
 GOOS=windows GOARCH=amd64 go build -a -ldflags "-extldflags \"-static\" -X main.progVersion=${VERSION}" -o $TARGET_DIR/mzrecal.exe
