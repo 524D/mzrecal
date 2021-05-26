@@ -168,49 +168,49 @@ type mzRange struct {
 var fixedCalibrants = []identifiedCalibrant{
 
 	// cyclosiloxanes, H6nC2nOnSin
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane6`,
 		mass:          444.1127481,
 		retentionTime: -math.MaxFloat64, // Indicates any retention time
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane7`,
 		mass:          518.1315394,
 		retentionTime: -math.MaxFloat64,
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane8`,
 		mass:          592.1503308,
 		retentionTime: -math.MaxFloat64,
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane9`,
 		mass:          666.1691221,
 		retentionTime: -math.MaxFloat64,
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane10`,
 		mass:          740.1879134,
 		retentionTime: -math.MaxFloat64,
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane11`,
 		mass:          814.2067048,
 		retentionTime: -math.MaxFloat64,
 		idCharge:      1,
 		singleCharged: true,
 	},
-	identifiedCalibrant{
+	{
 		name:          `cyclosiloxane12`,
 		mass:          888.2254961,
 		retentionTime: -math.MaxFloat64,
@@ -335,7 +335,7 @@ func pepMass(pepSeq string) (float64, error) {
 	for _, aa := range pepSeq {
 		aam, ok := aaMass[aa]
 		if !ok {
-			return 0.0, errors.New("Invalid amino acid")
+			return 0.0, errors.New("invalid amino acid")
 		}
 		m += aam
 	}
@@ -390,7 +390,7 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 				cal.mass = m + ident.ModMass
 				cals = append(cals, cal)
 			}
-		} else {
+			//		} else {
 			//			log.Print(ident.PepID + " does not match score filter.")
 		}
 	}
@@ -583,7 +583,7 @@ func filterMzCalibs(calibrants *[]calibrant, r mzRange) {
 // for debugging/clearifying the recalibration
 func genDebugInfo(calibrants []calibrant, matchingCals []calibrant,
 	calibrantsUsed []int, specIdx int, mzML *mzml.MzML) []specDebugInfo {
-	debugInfo := make([]specDebugInfo, 1, 1)
+	debugInfo := make([]specDebugInfo, 1)
 	debugInfo[0].CalsInRTWindow = len(calibrants)
 	debugInfo[0].CalsInMassWindow = len(matchingCals)
 	debugInfo[0].CalsUsed = len(calibrantsUsed)
@@ -1025,24 +1025,22 @@ func parseScoreFilter(scoreFilterStr string) (scoreFilter, error) {
 
 	re := regexp.MustCompile(`([^\(]+)\(([^\)]*)\)`)
 	matchedStringsList := re.FindAllStringSubmatch(scoreFilterStr, -1)
-	if matchedStringsList != nil {
-		for n, matchedStrings := range matchedStringsList {
+	for n, matchedStrings := range matchedStringsList {
 
-			scoreName := matchedStrings[1]
-			scoreRangeStr := matchedStrings[2]
-			_, ok := scoreFilt[scoreName]
-			if ok {
-				return nil, errors.New(scoreName + ` defined more than once.`)
-			}
-			minScore, maxScore, err := parseFloat64Range(scoreRangeStr,
-				-math.MaxFloat64, math.MaxFloat64)
-
-			if err != nil {
-				return nil, errors.New(`Invalid range for score ` + scoreName)
-			}
-			scRange := scoreRange{minScore: minScore, maxScore: maxScore, priority: n}
-			scoreFilt[scoreName] = scRange
+		scoreName := matchedStrings[1]
+		scoreRangeStr := matchedStrings[2]
+		_, ok := scoreFilt[scoreName]
+		if ok {
+			return nil, errors.New(scoreName + ` defined more than once.`)
 		}
+		minScore, maxScore, err := parseFloat64Range(scoreRangeStr,
+			-math.MaxFloat64, math.MaxFloat64)
+
+		if err != nil {
+			return nil, errors.New(`Invalid range for score ` + scoreName)
+		}
+		scRange := scoreRange{minScore: minScore, maxScore: maxScore, priority: n}
+		scoreFilt[scoreName] = scRange
 	}
 
 	return scoreFilt, nil
@@ -1091,7 +1089,7 @@ func initRtMs1(mzML mzml.MzML) (rtSpecs, error) {
 		}
 	}
 	if len(rtOfMs1Specs) == 0 {
-		return nil, fmt.Errorf("No MS1 spectra found, calibration not possible")
+		return nil, fmt.Errorf("no MS1 spectra found, calibration not possible")
 	}
 	sort.Sort(rtOfMs1Specs)
 
@@ -1241,7 +1239,7 @@ func doRecal(par params) {
 // Add our program name and version to the mzML software list
 // Write recalibrated mlML file
 func calibMzML(par params, mzML mzml.MzML, recal recalParams) {
-	recalMethod, err := recalMethodStr2Int(recal.RecalMethod)
+	recalMethod, _ := recalMethodStr2Int(recal.RecalMethod)
 
 	t := time.Now()
 
