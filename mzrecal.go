@@ -6,7 +6,6 @@
 package main
 
 import (
-	"C"
 	"encoding/json"
 	"errors"
 	"flag"
