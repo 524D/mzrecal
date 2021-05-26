@@ -13,33 +13,33 @@ Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downl
 
 ## Compiling
 
-The core of the program is written in [Go](https://golang.org/). A relatively
-small part is written in the C language, this is required to access the GSL
-library which is used to compute the recalibration parameters.
+mzRecal is written in [Go](https://golang.org/). The software was tested with version 1.16
 
 ### Linux
 
-On Ubuntu 20.04, to install the prerequisites and download/build the executable (both for Linux and for Windows):
+On any recent Ubuntu/Debian, to install the prerequisites and download/build the executable (both for Linux and for Windows):
+
+* [install Go](https://golang.org/doc/install) using default install options
 
 ```bash
-sudo apt install golang gcc libgsl-dev git
+sudo apt install git
 git clone https://github.com/524D/mzrecal
 cd mzrecal; ./build.sh
 ```
 
-The executables are put in folder `~/tools`.
+The executables are put in directory `~/tools`.
 
 ### Windows
 
-On Windows, to install the prerequisites and download/build the executable (for Windows only):
+On Windows, to install the prerequisites and download/build the executable (both for Linux and for Windows):
 
 * [install Go](https://golang.org/doc/install) using default install options
-* [Install tdm-gcc C compiler](https://jmeubank.github.io/tdm-gcc/) (MinGW-w64 based version) using default install options
 * [Install git](https://git-scm.com/download/win/) using default install options
 * Restart Windows to add newly installed software to the PATH
 * Open git bash (from the Windows start menu)
 * Get mzRecal. From git bash prompt: `git clone https://github.com/524D/mzrecal`
-* Build mzRecal. From git bash prompt: `cd mzrecal; ./build_windows.sh`.
+* Build mzRecal. From git bash prompt: `cd mzrecal; ./build.sh`.
+The executables are put in directory `tools` relative to the user's home directory.
 
 ## Input and output
 
