@@ -97,6 +97,7 @@ type params struct {
 	verbosity          int      // Verbosity of progress messages (infoDefault...)
 	args               []string // Addtional values passed on the command line
 	debug              bool     // Enable debug info (environment variable MZRECAL_DEBUG=1)
+	acceptProfile      *bool    // Accept non-peak picked profile spectra
 }
 
 // Calibrant as read from mzid file (or build in), with uncharged mass
@@ -342,7 +343,7 @@ func pepMass(pepSeq string) (float64, error) {
 
 // This function creates a slice with potential calibrants
 // Calibrants are obtained from 2 sources:
-// - Identied peptides (from mzid file)
+// - Identified peptides (from mzid file)
 // - Build-in list of fixed calibrants (cyclosiloxanes)
 // Identified peptides are only used if they pass the score filter
 // For each calibrant, it:
@@ -876,6 +877,8 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 	return specRecalPar, nil
 }
 
+var warnProfile = true // FIXME: remove after peak picking is implented
+
 // computeRecal computes the recalibration parameters for the whole mzML file
 func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
 	var recal recalParams
@@ -918,7 +921,13 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 				return recal, err
 			}
 			if !centroid {
-				return recal, errors.New(`input mzML file must contain centroid data, not profile data`)
+				// (unless overruled by option acceptprofile)
+				if !*par.acceptProfile {
+					return recal, errors.New(`input mzML file must contain centroid data, not profile data`)
+				} else if par.verbosity != infoSilent && warnProfile {
+					log.Println(`Warning: input contains non-peak picked (profile) spectra. This is currently not handled well by mzRecal.`)
+					warnProfile = false
+				}
 			}
 
 			specRecalPar, err := computeRecalSpec(mzML, idCals, i, recalMethod, par)
@@ -940,7 +949,7 @@ func min(a, b int) int {
 }
 
 // Return a slice with only the peaks that we want to base the calibration on
-// Only the most intence peaks are used, filtered by number of potential calibrants
+// Only the most intense peaks are used, filtered by number of potential calibrants
 // and absolute peak size
 func filterPeaks(peaks []mzml.Peak, par params, c int) []mzml.Peak {
 	// Make a copy of the slice, we don't want to sort the origial
@@ -1462,7 +1471,15 @@ Type %s --help for usage
 	`, exeName)
 		os.Exit(2)
 	}
-
+	if *par.acceptProfile {
+		// This is a kludge, and will be removed when mzRecal can perform peak-picking.
+		// To have a improve the default behavior, this option changes the option
+		// "calmult" to 0 and the default of "minpeak" to 10000
+		*par.calPeaks = 0
+		if *par.minPeak == 0 {
+			*par.minPeak = 10000
+		}
+	}
 }
 
 func usage() {
@@ -1586,6 +1603,11 @@ only the charge as found in the mzIdentMl file will be used for calibration.`)
 		"",
 		"`range`"+` of spectrum indices to calibrate (e.g. 1000:2000).
 Default is all spectra`)
+	par.acceptProfile = flag.Bool("acceptprofile", false,
+		`Accept non-peak picked (profile) input.
+This is a kludge, and will be removed when mzRecal can perform peak-picking.
+By setting "acceptprofile", the value of option "calmult" is automatically
+set to 0 and the default of "minpeak" is set to 100000`)
 	version := flag.Bool("version", false,
 		`Show software version`)
 	verbose := flag.Bool("verbose", false,
