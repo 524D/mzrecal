@@ -13,11 +13,11 @@ Ready-to-run executables of mzRecal for Linux and Microsoft Windows can be downl
 
 ## Compiling
 
-mzRecal is written in [Go](https://golang.org/). The software was tested with version 1.16
+mzRecal is written in [Go](https://golang.org/). The software was tested with Go version 1.16
 
 ### Linux
 
-On any recent Ubuntu/Debian, to install the prerequisites and download/build the executable (both for Linux and for Windows):
+On any recent Ubuntu/Debian, to install the prerequisites and download/build the executable:
 
 * [install Go](https://golang.org/doc/install) using default install options
 
@@ -27,11 +27,11 @@ git clone https://github.com/524D/mzrecal
 cd mzrecal; ./build.sh
 ```
 
-The executables are put in directory `~/tools`.
+The executables (both for Linux and for Windows)  are put in directory `~/tools`.
 
 ### Windows
 
-On Windows, to install the prerequisites and download/build the executable (both for Linux and for Windows):
+On Windows, to install the prerequisites and download/build the executable:
 
 * [install Go](https://golang.org/doc/install) using default install options
 * [Install git](https://git-scm.com/download/win/) using default install options
@@ -39,7 +39,7 @@ On Windows, to install the prerequisites and download/build the executable (both
 * Open git bash (from the Windows start menu)
 * Get mzRecal. From git bash prompt: `git clone https://github.com/524D/mzrecal`
 * Build mzRecal. From git bash prompt: `cd mzrecal; ./build.sh`.
-The executables are put in directory `tools` relative to the user's home directory.
+The executables (both for Windows and for Linux) are put in directory `tools` relative to the user's home directory.
 
 ## Input and output
 
@@ -83,6 +83,11 @@ USAGE:
   using peptide identifications in an accompanying mzID file.
 
 OPTIONS:
+  -acceptprofile
+        Accept non-peak picked (profile) input.
+        This is a kludge, and will be removed when mzRecal can perform peak-picking.
+        By setting "acceptprofile", the value of option "calmult" is automatically
+        set to 0 and the default of "minpeak" is set to 100000
   -cal filename
         filename for output of computed calibration parameters
   -calmult int
