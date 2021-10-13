@@ -3,7 +3,7 @@
 ## What does mzRecal do?
 
 mzrecal recalibrates mass spectrometry (MS1) data in mzML format, using peptide identifications in mzIdentML. mzRecal uses calibration functions based on the physics of the mass analyzer (FTICR, Orbitrap, TOF). The recalibration procedure was originally developed by Magnus Palmblad [[1]](#1)[[2]](#2). See also [msRecal](https://www.ms-utils.org/Taverna/msRecal.html) and [recal2](http://www.ms-utils.org/recal2.html) for more information on the predecessors of mzRecal.
-Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3).
+Consuming and producing data in the same, open standard, format (mzML), mzRecal can be inserted into virtually any modular proteomics data analysis workflow, similar to msRecal [[3]](#3). This latest iteration of the software was described in an Application Note by Marissen and Palmblad in 2021 [[4]](#4).
 
 Check section [Usage](#usage) for a more complete description.
 
@@ -205,6 +205,10 @@ Automatic internal calibration in liquid chromatography/Fourier transform ion cy
 Improving mass measurement accuracy in mass spectrometry based proteomics by combining open source tools for chromatographic alignment and internal calibration.
 *J. Proteomics.* 2009;72(4):722-4.
 
-<a id="3">[3]</a> de Bruin JS, Deelder AM,  Palmblad M, (2012).
+<a id="3">[3]</a> de Bruin JS, Deelder AM, Palmblad M (2012).
 Scientific workflow management in proteomics.
 *Mol. Cell. Proteomics.* 2012 Jul;11(7):M111.010595.
+
+<a id="4">[3]</a> Marissen R, Palmblad M (2021).
+mzRecal: universal MS1 recalibration in mzML using identified peptides in mzIdentML as internal calibrants.
+*Bioinformatics.* 2021 Feb 4;btab056.
