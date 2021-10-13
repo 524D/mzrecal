@@ -209,6 +209,6 @@ Improving mass measurement accuracy in mass spectrometry based proteomics by com
 Scientific workflow management in proteomics.
 *Mol. Cell. Proteomics.* 2012 Jul;11(7):M111.010595.
 
-<a id="4">[3]</a> Marissen R, Palmblad M (2021).
+<a id="4">[4]</a> Marissen R, Palmblad M (2021).
 mzRecal: universal MS1 recalibration in mzML using identified peptides in mzIdentML as internal calibrants.
 *Bioinformatics.* 2021 Feb 4;btab056.
