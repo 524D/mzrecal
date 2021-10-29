@@ -22,8 +22,6 @@ Note: installation must be executed with root (Linux)/ Administrator (Windows) p
     if (!requireNamespace("BiocManager", quietly = TRUE))
         install.packages("BiocManager")
     BiocManager::install(version = "3.14")
-    if (!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
     BiocManager::install("MSnbase")
     ```
 
