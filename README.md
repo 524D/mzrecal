@@ -64,6 +64,7 @@ MS2 spectra. Search engines commonly report the difference between theoretical
 mass and measured mass for identified peptides. The following plot shows the
 improvement of mzRecal on an Orbitrap and on a TOF dataset.
 ![ppm-histogram](./ppmerr.png)
+This plot was made by [running plot-recal.R](./run-plot-recal.md) (included in the mzRecal repository) 
 
 ## Go packages for mzML and mzIdentML
 
