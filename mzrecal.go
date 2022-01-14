@@ -717,8 +717,12 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 	satisfied := false
 	for !satisfied && (len(mzCalibrants) >= *par.minCal) {
 		// Set initial calibration constants
-		pIn := make([]float64, getNrCalPars(recalMethod))
-		pIn[1] = 1.0 // For all calibration methods, parameter 1 is 1.0, rest is 0.0
+		// For all calibration methods, the initial value of parameter 1 is 1.0, the rest is 0.0
+		nrCalPars := getNrCalPars(recalMethod)
+		pIn := make([]float64, nrCalPars)
+		if nrCalPars > 1 {
+			pIn[1] = 1.0
+		}
 		// Compute parameters for optimal fit
 		calParams, err := optimize.Minimize(problem, pIn, nil, &optimize.NelderMead{})
 		if err != nil {
