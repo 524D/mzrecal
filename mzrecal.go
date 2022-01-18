@@ -700,6 +700,8 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 	specRecalPar.SpecIndex = specIndex
 	var p []float64
 
+	// We use the gonum.optimize package to find the best parameters:
+	// https://pkg.go.dev/gonum.org/v1/gonum/optimize#Minimize
 	problem := optimize.Problem{
 		Func: func(x []float64) float64 {
 			sumOfResiduals := float64(0.0)
@@ -717,14 +719,15 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 	satisfied := false
 	for !satisfied && (len(mzCalibrants) >= *par.minCal) {
 		// Set initial calibration constants
-		// For all calibration methods, the initial value of parameter 1 is 1.0, the rest is 0.0
+		// For all calibration methods, the initial value of the parameter
+		// with index one is 1.0, the other paremeters are 0.0
 		nrCalPars := getNrCalPars(recalMethod)
 		pIn := make([]float64, nrCalPars)
 		if nrCalPars > 1 {
 			pIn[1] = 1.0
 		}
 		// Compute parameters for optimal fit
-		calParams, err := optimize.Minimize(problem, pIn, nil, &optimize.NelderMead{})
+		calParams, err := optimize.Minimize(problem, pIn, nil, nil)
 		if err != nil {
 			return specRecalPar, nil, err
 		}
