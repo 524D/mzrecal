@@ -10,7 +10,6 @@ import (
 // Test files, downloaded from Pride
 const testFile1 = "/home/robm/data/mzml_testfiles/100_mzML/100.mzML"
 const testFile2 = "/home/robm/data/mzml_testfiles/NJ-ManIxCC124-6-SN-FASP-v6-ISF80-12052016.mzML"
-const testFile3 = "/home/robm/data/mzml_testfiles/PT4708-8.mzML"
 
 func TestAll1(t *testing.T) {
 	x, err := os.Open(testFile1)
