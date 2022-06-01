@@ -1,6 +1,7 @@
 
 ![CodeQL](https://github.com/524D/mzrecal/actions/workflows/codeql-analysis.yml/badge.svg)
-
+[![Go Report Card](https://goreportcard.com/badge/github.com/524D/mzrecal)](https://goreportcard.com/report/github.com/524D/mzrecal)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/524D/mzrecal/blob/master/LICENSE.txt)
 
 # mzRecal
 
