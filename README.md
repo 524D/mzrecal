@@ -1,3 +1,7 @@
+
+![CodeQL](https://github.com/524D/mzrecal/actions/workflows/codeql-analysis.yml/badge.svg)
+
+
 # mzRecal
 
 ## What does mzRecal do?
