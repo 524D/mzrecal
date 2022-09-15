@@ -1,0 +1,36 @@
+
+<token name="@MZRECAL_VERSION@">1.1.0</token>
+<tool id="mzrecal" name="Recalibrate mass spectrometry data" version="@MZRECAL_VERSION@galaxy0">
+    <description>mzRecal recalibrates mass spectrometry data</description>
+  
+    <edam_topics>
+        <!-- Edam topic_0121=Proteomics -->
+        <edam_topic>topic_0121</edam_topic>
+    </edam_topics>
+    <edam_operations>
+        <!-- Edam operation_3627=Mass spectra calibration -->
+        <edam_operation>operation_3627</edam_operation>
+    </edam_operations>
+    <command>
+<![CDATA[
+mzRecal --mzid '$mzIdFile' --o '$RecalMzML' '$MzMLin'
+]]>
+    </command>
+    <inputs>
+    <param format="mzid" name="mzIdFile" type="data"
+        label="Identified peptides in mzID format"
+        help="The peptides identified in the uncalibrated mzML file"/>
+    </inputs>
+    <inputs>
+        <param format="mzml" name="MzMLin" type="data"
+        label="MS data in mzML format"
+        help="Uncalibrated mzML file"/>
+    </inputs>
+    <outputs>
+        <data format="mzml" name="RecalMzML" type="data" label="Recalibrated mzML file"/>
+    </outputs>
+
+    <version_command>mzrecal --version</version_command>
+    <help>mzRecal recalibrates MS1 data in mzML format using identified peptides in mzID format.</help>
+
+</tool>
