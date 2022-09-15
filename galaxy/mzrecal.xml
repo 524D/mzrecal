@@ -1,7 +1,9 @@
 
-<token name="@MZRECAL_VERSION@">1.1.0</token>
 <tool id="mzrecal" name="Recalibrate mass spectrometry data" version="@MZRECAL_VERSION@galaxy0">
     <description>mzRecal recalibrates mass spectrometry data</description>
+    <macros>
+        <token name="@MZRECAL_VERSION@">1.1.0</token>
+    </macros>
   
     <edam_topics>
         <!-- Edam topic_0121=Proteomics -->
