@@ -153,7 +153,7 @@ OPTIONS:
   -stage int
         0 (default): do all calibration stages in one run
         1: only compute recalibration parameters
-        2: perform recalibration using previously computer parameters
+        2: perform recalibration using previously computed parameters
   -verbose
         Print more verbose progress information
   -version

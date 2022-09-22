@@ -47,7 +47,6 @@ const cvTOFSpectrometer = `MS:1000084`
 const cvOrbiTrapSpectrometer = `MS:1000484`
 
 // The calibration types that we can handle
-// WARNING: This must be consistent with C enum calib_method_t in gsl_wrapper.go
 type calibType int
 
 const (
@@ -71,7 +70,7 @@ const (
 
 // Command line parameters
 type params struct {
-	stage              *int // Compute recal parmeters (1), recalibrate (2) or both (0)
+	stage              *int // Compute recal parameters (1), recalibrate (2) or both (0)
 	mzMLFilename       *string
 	mzMLRecalFilename  *string
 	mzIdentMlFilename  *string
@@ -83,19 +82,19 @@ type params struct {
 	rtWindow           *string  // retention time window
 	lowRT              float64  // lower rt window boundary
 	upRT               float64  // upper rt window boundary
-	mzErrPPM           *float64 // max mz error for trying a calibrant in calibrant
+	mzErrPPM           *float64 // max mz error for trying a calibrant in calibration
 	mzTargetPPM        *float64 // max mz error for accepting a calibrant in calibration
-	recalMethod        *string  // Recal method as specfied by user
+	recalMethod        *string  // Recal method as specified by user
 	scoreFilter        *string  // PSM score filter to apply
 	charge             *string  // Charge range for calibrants
-	useIdentCharge     bool     // Use only chage as found in identification
+	useIdentCharge     bool     // Use only charge as found in identification
 	minCharge          int      // min charge for calibrants
 	maxCharge          int      // max charge for calibrants
 	specFilter         *string  // Range of spectra to recalibrate
 	minSpecIdx         int      // Lowest spectrum index to recalibrate
 	maxSpecIdx         int      // Highest spectrum index to recalibrate
 	verbosity          int      // Verbosity of progress messages (infoDefault...)
-	args               []string // Addtional values passed on the command line
+	args               []string // Additional values passed on the command line
 	debug              bool     // Enable debug info (environment variable MZRECAL_DEBUG=1)
 	acceptProfile      *bool    // Accept non-peak picked profile spectra
 }
@@ -273,7 +272,7 @@ var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
 
 // Parse string like "-12:6" into 2 values, -12 and 6
 // Parameters min and max are the "default" min/max values,
-// when a value is not specified (e.g. "-12:"), the defauls is assigned
+// when a value is not specified (e.g. "-12:"), the default is assigned
 func parseIntRange(r string, min int, max int) (int, int, error) {
 	re := regexp.MustCompile(`\s*(\-?\d*):(\-?\d*)`)
 	m := re.FindStringSubmatch(r)
@@ -301,7 +300,7 @@ func parseIntRange(r string, min int, max int) (int, int, error) {
 
 // Parse string like "-12.01e1:+6" into 2 values, -120.1 and 6.0
 // Parameters min and max are the "default" min/max values,
-// when a value is not specified (e.g. "-12.01e1:"), the defauls is assigned
+// when a value is not specified (e.g. "-12.01e1:"), the default is assigned
 func parseFloat64Range(r string, min float64, max float64) (
 	float64, float64, error) {
 	re := regexp.MustCompile(`\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?):([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)`)
@@ -1552,7 +1551,7 @@ Valid function names:
 	par.stage = flag.Int("stage", 0,
 		`0 (default): do all calibration stages in one run
 1: only compute recalibration parameters
-2: perform recalibration using previously computer parameters`)
+2: perform recalibration using previously computed parameters`)
 	par.mzMLRecalFilename = flag.String("o",
 		"",
 		"`filename` of recalibrated mzML")
