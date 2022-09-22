@@ -16,8 +16,6 @@
 # Recalibrate (using mzrecal)
 # Add index to mzML file (using msconvert)
 # Identify peptides in recalibrated files (using comet)
-# Combine results from multiple files, both before and after recalibration
-#  (using peptide prophet/xinteract)
 # Display a histogram of ms2 precursor mass errors before and
 #  after recalibration
 # All results and intermediate results are stored in a separate direcory
