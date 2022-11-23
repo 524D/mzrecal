@@ -22,3 +22,17 @@ authors:
       Center for Proteomics and Metabolomics, Leiden
       University Medical Center
     orcid: 'https://orcid.org/0000-0002-5865-8994'
+identifiers:
+  - type: url
+    value: >-
+      https://github.com/524D/mzrecal/releases/tag/v1.1.0
+    description: The URL of version 1.1.0 of the software
+repository-code: 'https://github.com/524D/mzrecal'
+abstract: >-
+  mzRecal recalibrates mass spectrometry (MS1) data
+  in mzML format, using peptide identifications in
+  mzIdentML.
+keywords:
+  - proteomics
+  - mass spectrometry
+license: MIT
