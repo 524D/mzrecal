@@ -1,0 +1,24 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: mzRecal
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Rob
+    family-names: Marissen
+    email: r.j.marissen@lumc.nl
+    affiliation: >-
+      Center for Proteomics and Metabolomics, Leiden
+      University Medical Center
+    orcid: 'https://orcid.org/0000-0002-1220-9173'
+  - given-names: Magnus
+    family-names: Palmblad
+    email: N.M.Palmblad@lumc.nl
+    affiliation: >-
+      Center for Proteomics and Metabolomics, Leiden
+      University Medical Center
+    orcid: 'https://orcid.org/0000-0002-5865-8994'
