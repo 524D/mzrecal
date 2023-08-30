@@ -1,6 +1,13 @@
 #!/usr/bin/Rscript
 # Usage:
-#   plot_errors [-f <searchFile1> --file <searchFile2>
+#   Rscript plot_recal -e 0.01 -m 10 -o plot.png file1.mzid file1-recal.mzid
+# Install dependencies:
+#   install.packages(c("optparse", "ggplot2", "gridExtra", "grid", "stringr", "futile.logger"))
+#   if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+
+#   BiocManager::install("MSnbase")
+
 
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(futile.logger))
@@ -13,16 +20,20 @@ suppressPackageStartupMessages(library(gridExtra))
 
 getMzId<-function(fileName, className, cometExpLim, maxPpmErr)
 {
+    print("Reading mzid file")
+    print(fileName)
     mzid <- readMzIdData(fileName)
-    mzidGood <- subset(mzid, Comet.expectation.value < cometExpLim)
+    print("Filtering mzid file")
 
+    mzidGood <- subset(mzid, Comet.expectation.value < cometExpLim)
+    print("Calculating number of PSMs")
     psms <- nrow(mzidGood)
 
-
+    print("Only keeping columns we need")
     # Only keep columns that we want
     keeps <- c( "experimentalMassToCharge", "calculatedMassToCharge")
     mzidGood=mzidGood[keeps]
-
+    print("Calculating mass error")
     mzidGood$mzErr <- mzidGood$experimentalMassToCharge - mzidGood$calculatedMassToCharge
     mzidGoodX=subset(mzidGood, (1000000.0*abs(mzErr)/calculatedMassToCharge) < maxPpmErr)
     mzidGoodX$ppmErr <- 1000000.0* mzidGoodX$mzErr / mzidGoodX$calculatedMassToCharge
