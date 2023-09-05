@@ -6,7 +6,6 @@ mkdir -p $TARGET_DIR
 # Obtain version number from git
 VERSION=$(git describe --abbrev --dirty --always --tags)
 VERSION=${VERSION#"v"}
-
 # build flags are set to creat a binairy reproducable, fully statically linked executable that includes the Git version number
 # -trimpath: don't inlude full source code path names in the executable. Needed to produce binairy reproducable output.
 # -ldflags:
@@ -21,7 +20,7 @@ GOOS=linux GOARCH=amd64 go build -trimpath -a -ldflags "-extldflags \"-static\" 
 
 # Create Docker image
 cp Dockerfile $TARGET_DIR
-( DIR=$PWD; cd $TARGET_DIR ; docker build --tag mzrecal:${VERSION} . )
+( DIR=$PWD; cd $TARGET_DIR ; docker build --tag robmarissen/mzrecal:${VERSION} . )
 
 # Use as:
 # docker run -v /home/robm/data:/data  mzrecal /mzrecal  -scorefilter="MS:1002257(0.0:1e0)" -mzid="/data/msrecal_ribosomes/human_ribosome_60S_bottomup_peak.mzid" -cal="/data/msrecal_ribosomes/human_ribosome_60S_bottomup_peak.recal.json" "/data/msrecal_ribosomes/human_ribosome_60S_bottomup_peak.mzML"
