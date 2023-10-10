@@ -3,6 +3,7 @@ package mzidentml
 import (
 	"encoding/xml"
 	"io"
+	"math"
 	"strconv"
 
 	"golang.org/x/net/html/charset"
@@ -40,10 +41,17 @@ func (m *MzIdentML) buildIdentList() {
 	}
 }
 
+// NumIdents returns the total number of identifications in the mzIdentML file
+// Note that for some spectra, multiple identifications may be present
+// The identifications can be accessed using the Ident() method, which takes
+// an index as argument. The index runs from 0 to NumIdents()-1
 func (m *MzIdentML) NumIdents() int {
 	return len(m.identList)
 }
 
+// Ident returns a spectrum identification from the mzIdentML file.
+// Parameter i is the index of the identification to return. The index runs
+// from 0 to NumIdents()-1
 func (m *MzIdentML) Ident(i int) (Identification, error) {
 
 	var ident Identification
@@ -65,9 +73,39 @@ func (m *MzIdentML) Ident(i int) (Identification, error) {
 	}
 	ident.SpecID = m.content.SpectrumIdentificationResult[specIDIdx].SpectrumID
 	ident.RetentionTime = float64(-1)
+	prio := math.MaxInt32
 	for _, cv := range m.content.SpectrumIdentificationResult[specIDIdx].CvPar {
-		// scan start time or retention time(s) (obsolete)
-		if cv.Accession == "MS:1000016" || cv.Accession == "MS:1001114" {
+		// There are multiple CV terms that can be used to report the
+		// retention time. In order of decreasing preference we use:
+		// 1. MS:1000016 - scan start time
+		// 2. MS:1000894 - retention time
+		// 3. MS:1000826 - elution time
+		// 4. MS:1001114 - retention time (deprecated)
+		useTime := false
+		switch cv.Accession {
+		case "MS:1000016":
+			if prio > 1 {
+				prio = 1
+				useTime = true
+			}
+		case "MS:1000894":
+			if prio > 2 {
+				prio = 2
+				useTime = true
+			}
+		case "MS:1000826":
+			if prio > 3 {
+				prio = 3
+				useTime = true
+			}
+		case "MS:1001114":
+			if prio > 4 {
+				prio = 4
+				useTime = true
+			}
+		}
+		// If a (higher priority) term was found, process/store the retention time
+		if useTime {
 			retentionTime, err := strconv.ParseFloat(cv.Value, 64)
 			if err != nil {
 				return ident, err
