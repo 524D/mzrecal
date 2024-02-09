@@ -243,7 +243,7 @@ var aaMass = map[rune]float64{
 	'Y': 163.0633285,
 }
 
-var ErrRangeSpec = errors.New("Invalid range specified")
+var ErrRangeSpec = errors.New("invalid range specified")
 
 // Data processing steps to be added to mzML file
 var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
