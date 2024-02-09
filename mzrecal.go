@@ -243,6 +243,8 @@ var aaMass = map[rune]float64{
 	'Y': 163.0633285,
 }
 
+var ErrRangeSpec = errors.New("Invalid range specified")
+
 // Data processing steps to be added to mzML file
 var mzRecalProcessing mzml.DataProcessing = mzml.DataProcessing{
 	ID: progName,
@@ -292,7 +294,7 @@ func parseIntRange(r string, min int, max int) (int, int, error) {
 	}
 	var err error
 	if minOut > maxOut {
-		err = errors.New("parseIntRange min>max")
+		err = ErrRangeSpec
 		minOut = maxOut
 	}
 	return minOut, maxOut, err
@@ -303,7 +305,7 @@ func parseIntRange(r string, min int, max int) (int, int, error) {
 // when a value is not specified (e.g. "-12.01e1:"), the default is assigned
 func parseFloat64Range(r string, min float64, max float64) (
 	float64, float64, error) {
-	re := regexp.MustCompile(`\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?):([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)`)
+	re := regexp.MustCompile(`\s*([-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?):([-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?)`)
 	m := re.FindStringSubmatch(r)
 	minOut := min
 	maxOut := max
@@ -321,7 +323,7 @@ func parseFloat64Range(r string, min float64, max float64) (
 	}
 	var err error
 	if minOut > maxOut {
-		err = errors.New("parseFloat64Range min>max")
+		err = ErrRangeSpec
 		minOut = maxOut
 	}
 	return minOut, maxOut, err
@@ -356,6 +358,9 @@ func makeCalibrantList(mzIdentML *mzidentml.MzIdentML, scoreFilt scoreFilter,
 		ident, err := mzIdentML.Ident(i)
 		if err != nil {
 			return nil, err
+		}
+		if ident.RetentionTime < 0 {
+			return nil, errors.New("no valid retention time for identification " + ident.PepID)
 		}
 		//		log.Printf("indent %+v\n", ident)
 		scoreOK := false
@@ -1374,7 +1379,7 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 
 	idCals, err := makeCalibrantList(&mzIdentML, scoreFilt, par)
 	if err != nil {
-		log.Fatal("makeCalibrantList failed")
+		log.Fatal("makeCalibrantList failed:", err)
 	}
 
 	if par.verbosity == infoVerbose {
