@@ -1594,7 +1594,7 @@ peaks are considered for computing the recalibration. <1 means all peaks.`)
    the rest is accepted.
 > 0: max mz error (ppm) for accepting a calibrant for calibration`)
 	par.scoreFilter = flag.String("scorefilter",
-		"MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)",
+		"MS:1002257(0.0:1e-2)MS:1001330(0.0:1e-2)MS:1001159(0.0:1e-2)MS:1002466(0.99:)MS:1002319(50:)MS:1001331(40:)",
 		`filter for PSM scores to accept. Format:
 <CVterm1|scorename1>([<minscore1>]:[<maxscore1>])...
 When multiple score names/CV terms are specified, the first one on the list
