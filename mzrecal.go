@@ -431,7 +431,7 @@ func calibsInRtWindows(rtMin, rtMax float64, allCals []identifiedCalibrant) ([]i
 
 // makeChargedCalibrants computes the m/z value for the calibrants
 // defines in parameter specCals for all selected charges states.
-// Equal m/z values (within numerical precission) are merged
+// Equal m/z values (within numerical precision) are merged
 func makeChargedCalibrants(specCals []identifiedCalibrant, par params) ([]calibrant, error) {
 	// Make slice with mz values for all calibrants
 	// For efficiency, pre-allocate (more than) enough elements
@@ -457,7 +457,7 @@ func makeChargedCalibrants(specCals []identifiedCalibrant, par params) ([]calibr
 
 // mergeSameMzCals merges all calibrants that have the same m/z or
 // nearly the same m/z. The m/z of the first calibrant that was encountered
-// is retained. The list of calibrants with their chargestate is appended
+// is retained. The list of calibrants with their charge state is appended
 // to the final list of calibrants.
 func mergeSameMzCals(chargedCalibrants []chargedCalibrant) []calibrant {
 	mcals := make([]calibrant, 0, len(chargedCalibrants))
@@ -583,7 +583,7 @@ func filterMzCalibs(calibrants *[]calibrant, r mzRange) {
 }
 
 // genDebugInfo returns info that can be added to the JSON output
-// for debugging/clearifying the recalibration
+// for debugging/clarifying the recalibration
 func genDebugInfo(calibrants []calibrant, matchingCals []calibrant,
 	calibrantsUsed []int, specIdx int, mzML *mzml.MzML) []specDebugInfo {
 	debugInfo := make([]specDebugInfo, 1)
@@ -724,7 +724,7 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 	for !satisfied && (len(mzCalibrants) >= *par.minCal) {
 		// Set initial calibration constants
 		// For all calibration methods, the initial value of the parameter
-		// with index one is 1.0, the other paremeters are 0.0
+		// with index one is 1.0, the other parameters are 0.0
 		nrCalPars := getNrCalPars(recalMethod)
 		pIn := make([]float64, nrCalPars)
 		if nrCalPars > 1 {
@@ -888,7 +888,7 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 	return specRecalPar, nil
 }
 
-var warnProfile = true // FIXME: remove after peak picking is implented
+var warnProfile = true // FIXME: remove after peak picking is implemented
 
 // computeRecal computes the recalibration parameters for the whole mzML file
 func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (recalParams, error) {
@@ -963,7 +963,7 @@ func min(a, b int) int {
 // Only the most intense peaks are used, filtered by number of potential calibrants
 // and absolute peak size
 func filterPeaks(peaks []mzml.Peak, par params, c int) []mzml.Peak {
-	// Make a copy of the slice, we don't want to sort the origial
+	// Make a copy of the slice, we don't want to sort the original
 	peaksNew := make([]mzml.Peak, len(peaks))
 	copy(peaksNew, peaks)
 	// sort by intensity, so the most intense peaks are at the front
@@ -1022,7 +1022,7 @@ func maxPeakInMzWindow(mzMin, mzMax float64, peaks []mzml.Peak) mzml.Peak {
 	i1 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz >= mzMin })
 	i2 := sort.Search(len(peaks), func(i int) bool { return peaks[i].Mz > mzMax })
 
-	var peak mzml.Peak // auto initialzed to 0.0, 0.0
+	var peak mzml.Peak // auto initialized to 0.0, 0.0
 	for i := i1; i < i2; i++ {
 		if peaks[i].Intens > peak.Intens {
 			peak = peaks[i]
@@ -1174,7 +1174,7 @@ func updatePrecursorMz(mzML mzml.MzML, recal recalParams, par params) (int, int,
 		if MSLevel == 2 && i >= par.minSpecIdx && i <= par.maxSpecIdx {
 			precursorsTotal++
 			// The precursor MS1 spectrum is the one for which we have recalibration
-			// Find the MS1 spctrum that belongs to this MS2, so that
+			// Find the MS1 spectrum that belongs to this MS2, so that
 			// we can recalibrate the precursor mass of the MS2.
 			// We cannot use SpectrumRef to obtain the parent spectrum
 			// because it is not always present (i.e. SCIEX)
@@ -1260,7 +1260,7 @@ func recalSelectedIons(precursor *mzml.XMLprecursor, recalMethod calibType, p []
 // doRecal glues together all the steps to produce a
 // re-calibrated mzML file:
 // Read mzML file
-// Read racalibration parameters from JSON file
+// Read recalibration parameters from JSON file
 // Recalibrate each spectrum
 // Add our program name and version to the mlML software list
 // Write recalibrated mlML file
@@ -1426,9 +1426,9 @@ func makeRecalCoefficients(par params) (mzML mzml.MzML, recal recalParams) {
 	return mzML, recal
 }
 
-// sanatizeParams does some checks on parameters, and fills missing
+// sanitizeParams does some checks on parameters, and fills missing
 // filenames if possible
-func sanatizeParams(par *params) {
+func sanitizeParams(par *params) {
 	exeName := filepath.Base(os.Args[0])
 
 	if len(par.args) != 1 {
@@ -1645,7 +1645,7 @@ Please build this program with script 'build.sh' so that the git version is show
 	// Check if debug output should be enabled
 	par.debug = os.Getenv("MZRECAL_DEBUG") == `1`
 
-	sanatizeParams(&par)
+	sanitizeParams(&par)
 	switch *par.stage {
 	case 1:
 		makeRecalCoefficients(par)
