@@ -1,4 +1,5 @@
 # This makefile is used to run mzrecal on a set of files
+# From the folder containing mzML files, execute as: make -f workflow.makefile
 #
 # Before using:
 # - The following tools must be installed (in ${HOME}/tools, modify location below if needed):
