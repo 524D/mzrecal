@@ -494,6 +494,10 @@ func newChargedCalibrant(charge int, idCal *identifiedCalibrant) chargedCalibran
 func instrument2RecalMethod(mzML *mzml.MzML) (calibType, string, error) {
 	instruments, err := mzML.MSInstruments()
 	if err != nil {
+		if err == mzml.ErrNoInstrumentConfiguration {
+			log.Println("WARNING: Can't determine instrument type because mzML file doesn't contain obligatory 'instrumentConfigurationList', using POLY2 recalibration")
+			return calibPoly2, `POLY2`, nil
+		}
 		return 0, ``, err
 	}
 	for _, instr := range instruments {
@@ -585,11 +589,11 @@ func filterMzCalibs(calibrants *[]calibrant, r mzRange) {
 // genDebugInfo returns info that can be added to the JSON output
 // for debugging/clarifying the recalibration
 func genDebugInfo(calibrants []calibrant, matchingCals []calibrant,
-	calibrantsUsed []int, specIdx int, mzML *mzml.MzML) []specDebugInfo {
+	calsUsed []calibrant, specIdx int, mzML *mzml.MzML) []specDebugInfo {
 	debugInfo := make([]specDebugInfo, 1)
 	debugInfo[0].CalsInRTWindow = len(calibrants)
 	debugInfo[0].CalsInMassWindow = len(matchingCals)
-	debugInfo[0].CalsUsed = len(calibrantsUsed)
+	debugInfo[0].CalsUsed = len(calsUsed)
 	iit, _ := mzML.IonInjectionTime(specIdx)
 	if !math.IsNaN(iit) {
 		debugInfo[0].IonInjectionTime = iit
@@ -698,7 +702,7 @@ func removeOutliersMzQC(mzCalibrants []calibrant, recalMethod calibType, p []flo
 // Compute recalibration parameters that best fit the calibrants
 func recalibrateSpec(specIndex int, recalMethod calibType,
 	mzCalibrants []calibrant, par params) (
-	specRecalParams, []int, error) {
+	specRecalParams, []calibrant, error) {
 
 	var specRecalPar specRecalParams
 	specRecalPar.SpecIndex = specIndex
@@ -748,12 +752,11 @@ func recalibrateSpec(specIndex int, recalMethod calibType,
 		}
 
 	}
-	var calibrantsUsed []int // FIX ME: superfluous and only used for debugging, return mzCalibrants instead
 	if !satisfied {
 		return specRecalPar, nil, nil
 	}
 	specRecalPar.P = p
-	return specRecalPar, calibrantsUsed, nil
+	return specRecalPar, mzCalibrants, nil
 }
 
 func mzRecalPolyN(mzMeas float64, p []float64, degree int) float64 {
@@ -871,7 +874,7 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 	matchingCals := calibrantsMatchPeaks(peaks, calibrants, par)
 
 	// Compute recalibration constants
-	specRecalPar, calibrantsUsed, err := recalibrateSpec(specIdx, recalMethod,
+	specRecalPar, calsUsed, err := recalibrateSpec(specIdx, recalMethod,
 		matchingCals, par)
 	if err != nil {
 		log.Printf("computeRecalSpec calibration failed for spectrum %d: %v",
@@ -879,12 +882,12 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 	}
 	if par.debug {
 		specRecalPar.DebugInfo = genDebugInfo(calibrants, matchingCals,
-			calibrantsUsed, specIdx, mzML)
+			calsUsed, specIdx, mzML)
 	}
 
 	debugLogSpecs(specIdx, mzML.NumSpecs(), retentionTime, peaks, matchingCals, par,
-		calibrantsUsed, recalMethod, specRecalPar)
-	debugRegisterCalUsed(specIdx, matchingCals, par, calibrantsUsed)
+		calsUsed, recalMethod, specRecalPar)
+	debugRegisterCalUsed(specIdx, calsUsed)
 	return specRecalPar, nil
 }
 

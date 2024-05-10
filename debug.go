@@ -26,7 +26,7 @@ func init() {
 
 func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 	peaks []mzml.Peak, matchingCals []calibrant, par params,
-	calibrantsUsed []int, recalMethod calibType, specRecalPar specRecalParams) {
+	calsUsed []calibrant, recalMethod calibType, specRecalPar specRecalParams) {
 
 	if *debugSpecs != `` {
 		debugMin, debugMax, _ := parseIntRange(*debugSpecs, 0, numSpecs)
@@ -36,8 +36,13 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 				mz2matchIndex[mzMatch.mzMeasured] = k
 			}
 			isCalibrantUsed := make([]bool, len(matchingCals))
-			for _, j := range calibrantsUsed {
-				isCalibrantUsed[j] = true
+
+			for ci, cal := range matchingCals {
+				for _, usedCal := range calsUsed {
+					if usedCal.mz == cal.mz && usedCal.mzMeasured == cal.mzMeasured {
+						isCalibrantUsed[ci] = true
+					}
+				}
 			}
 
 			fmt.Printf("Spectrum:%d rt:%f\n", i, retentionTime)
@@ -108,11 +113,10 @@ func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64,
 	}
 }
 
-func debugRegisterCalUsed(i int, matchingCals []calibrant, par params, calibrantsUsed []int) {
-	for _, cu := range calibrantsUsed {
-		mc := matchingCals[cu]
+func debugRegisterCalUsed(i int, calsUsed []calibrant) {
+	for _, cal := range calsUsed {
 		calUsed4SpecMux.Lock()
-		for _, cc := range mc.chargedCals {
+		for _, cc := range cal.chargedCals {
 			calUsed4Spec[*cc.idCal] = append(calUsed4Spec[*cc.idCal], i)
 		}
 		calUsed4SpecMux.Unlock()
