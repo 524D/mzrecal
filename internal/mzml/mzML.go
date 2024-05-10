@@ -33,7 +33,7 @@ type mzMLContent struct {
 	Run                         run                          `xml:"run"`
 }
 
-// We define a separte struct for writing XML because it is not possible
+// We define a separate struct for writing XML because it is not possible
 // to write namespace info otherwise
 type mzMLContentWrite struct {
 	XMLName         xml.Name `xml:"http://psi.hupo.org/ms/mzml mzML"`

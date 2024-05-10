@@ -102,7 +102,7 @@ func debugLogSpecs(i int, numSpecs int, retentionTime float64,
 	}
 }
 
-func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64, par params) {
+func debugLogPrecursorUpdate(i int, numSpecs int, mzOrig float64, mzNew float64) {
 
 	if *debugSpecs != `` {
 		debugMin, debugMax, _ := parseIntRange(*debugSpecs, 0, numSpecs)

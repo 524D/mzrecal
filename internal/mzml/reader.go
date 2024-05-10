@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"strconv"
@@ -60,7 +59,7 @@ func Read(reader io.Reader) (MzML, error) {
 // 	var newAttrs []xml.Attr
 // 	// for i, attr := range f.content.Attrs {
 // 	// 	if attr == xml.Attr{Name : "x", Value:"y"} {
-// 	// 		newAtrrs = append(newAttrs, attr)
+// 	// 		newAttrs = append(newAttrs, attr)
 // 	// 	}
 // 	// }
 // 	f.content.Attrs = newAttrs
@@ -113,7 +112,7 @@ func binaryDataPars(binaryDataArray *binaryDataArray) (
 func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
 	zlibCompression, bits64, mzArray, intensityArray, _ :=
 		binaryDataPars(binaryDataArray)
-	// We are only interrested in mz and intensity
+	// We are only interested in mz and intensity
 	if mzArray || intensityArray {
 		// Skip empty data, nothing needs to be done and zlib will cause an error
 		if len(binaryDataArray.Binary) > 0 {
@@ -128,7 +127,7 @@ func fillScan(p []Peak, binaryDataArray *binaryDataArray) ([]Peak, error) {
 					return nil, err
 				}
 				defer z.Close()
-				d, err := ioutil.ReadAll(z)
+				d, err := io.ReadAll(z)
 				if err != nil {
 					return nil, err
 				}
@@ -207,7 +206,7 @@ func (f *MzML) IonInjectionTime(scanIndex int) (float64, error) {
 		for _, cvParam := range scan.CvPar {
 			if cvParam.Accession == "MS:1000927" {
 				t, err := strconv.ParseFloat(cvParam.Value, 64)
-				// Check if the ion injection time is in miliseconds,
+				// Check if the ion injection time is in mili seconds,
 				// (always the case currently), otherwise return error
 				if cvParam.UnitAccession != "UO:0000028" {
 					return t, ErrUnknownUnit

@@ -1250,7 +1250,7 @@ func recalSelectedIons(precursor *mzml.XMLprecursor, recalMethod calibType, p []
 					mzNew := mzRecal(mz, recalMethod, p)
 					selectedIon.CvPar[k].Value =
 						strconv.FormatFloat(mzNew, 'f', 8, 64)
-					debugLogPrecursorUpdate(specNr, numSpecs, mz, mzNew, par)
+					debugLogPrecursorUpdate(specNr, numSpecs, mz, mzNew)
 					updated = true
 					break
 				}
