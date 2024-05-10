@@ -18,6 +18,7 @@ import (
 // Read reads mzML file from an io.Reader
 func Read(reader io.Reader) (MzML, error) {
 	var mzML MzML
+	mzmlFound := false
 
 	d := xml.NewDecoder(reader)
 	d.CharsetReader = charset.NewReaderLabel
@@ -35,15 +36,17 @@ func Read(reader io.Reader) (MzML, error) {
 		switch t := t.(type) {
 		case xml.StartElement:
 			if t.Name.Local == "mzML" {
-				if err := d.DecodeElement(&mzML.content, &t); err != nil {
-					if err != nil {
-						return mzML, err
-					}
+				mzmlFound = true
+				err := d.DecodeElement(&mzML.content, &t)
+				if err != nil {
+					return mzML, err
 				}
 			}
 		}
 	}
-
+	if !mzmlFound {
+		return mzML, ErrNoMzML
+	}
 	err := mzML.traverseScan()
 	// Don't know why cleaning up the namespace is needed, but Go's XML
 	// parser puts crap there
@@ -298,6 +301,9 @@ func (f *MzML) MSInstruments() ([]string, error) {
 	var instrConf instrumentConfiguration
 
 	// Get the raw XML for the instrument configuration
+	if f.content.InstrumentConfigurationList == nil {
+		return nil, ErrNoInstrumentConfiguration
+	}
 	XML := f.content.InstrumentConfigurationList.InstrumentConfigurationListXML
 	// Parse it
 	err := xml.Unmarshal(XML, &instrConf)

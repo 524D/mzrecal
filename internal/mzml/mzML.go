@@ -218,4 +218,8 @@ var (
 	ErrInvalidScanIndex = errors.New("MzML: invalid scan index")
 	// ErrUnknownUnit means the file contains a unit that the software cannot handle
 	ErrUnknownUnit = errors.New("MzML: can't handle unit")
+	// ErrNoInstrumentConfiguration means the file does not contain an instrument configuration
+	ErrNoInstrumentConfiguration = errors.New("MzML: no instrument configuration in file")
+	// ErrNoMzML means the file does not contain mzML content
+	ErrNoMzML = errors.New("MzML: no mzML content in file")
 )
