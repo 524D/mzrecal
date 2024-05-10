@@ -127,9 +127,10 @@ type calibrant struct {
 type recalParams struct {
 	// Version of recalibration parameters, used when storing/loading
 	// parameters in JSON format for different version of the software
-	MzRecalVersion string
-	RecalMethod    string // Recalibration method used (TOF/FTICR/Orbitrap)
-	SpecRecalPar   []specRecalParams
+	MzRecalVersion   string
+	RecalMethod      string  // Recalibration method used (TOF/FTICR/Orbitrap)
+	RMSCalibShiftPPM float64 // RMS of m/z shift in ppm of calibrants that where used for calibration
+	SpecRecalPar     []specRecalParams
 }
 
 type specDebugInfo struct {
@@ -833,9 +834,29 @@ func getNrCalPars(recalMethod calibType) int {
 	return 0
 }
 
+// calibQC contains data to keep track of the calibration quality
+// To measure the quality of the recalibration, we use the Root Mean Square
+// (RMS) of the PPM mass shifts of the calibrants that were used for recalibration
+// Therefore, we must maintain the total number of calibrants and the
+// square of the PPM mass error
+type calibQC struct {
+	nrCalibrants int
+	sumSqErr     float64
+}
+
+func updateCalibQC(calsUsed []calibrant, recalMethod calibType, specRecalPar specRecalParams, calQC *calibQC) {
+	for _, cal := range calsUsed {
+		mzCalib := mzRecal(cal.mzMeasured, recalMethod, specRecalPar.P)
+		massShift := mzCalib - cal.mz
+		massShiftPPM := massShift / cal.mz * 1e6
+		calQC.nrCalibrants++
+		calQC.sumSqErr += massShiftPPM * massShiftPPM
+	}
+}
+
 // computeRecalSpec executes recalibration steps for a single spectrum
 func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
-	specIdx int, recalMethod calibType, par params) (specRecalParams, error) {
+	specIdx int, recalMethod calibType, calQC *calibQC, par params) (specRecalParams, error) {
 	var specRecalPar specRecalParams
 	var err error
 
@@ -880,6 +901,10 @@ func computeRecalSpec(mzML *mzml.MzML, idCals []identifiedCalibrant,
 		log.Printf("computeRecalSpec calibration failed for spectrum %d: %v",
 			specIdx, err)
 	}
+
+	// Compute the RMS mass shift of the calibrants that where used for recalibration
+	updateCalibQC(calsUsed, recalMethod, specRecalPar, calQC)
+
 	if par.debug {
 		specRecalPar.DebugInfo = genDebugInfo(calibrants, matchingCals,
 			calsUsed, specIdx, mzML)
@@ -920,8 +945,8 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 		}
 	}
 
+	var calQC calibQC
 	numSpecs := mzML.NumSpecs()
-
 	for i := 0; i < numSpecs; i++ {
 		// Only MS1 spectra are used for recalibration
 		msLevel, err := mzML.MSLevel(i)
@@ -944,13 +969,15 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 				}
 			}
 
-			specRecalPar, err := computeRecalSpec(mzML, idCals, i, recalMethod, par)
+			specRecalPar, err := computeRecalSpec(mzML, idCals, i, recalMethod, &calQC, par)
 			if err != nil {
 				return recal, err
 			}
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 		}
 	}
+	recal.RMSCalibShiftPPM = math.Sqrt(calQC.sumSqErr / float64(calQC.nrCalibrants))
+
 	debugListUnusedCalibrants(idCals)
 	return recal, nil
 }
