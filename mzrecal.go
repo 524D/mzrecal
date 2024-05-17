@@ -127,10 +127,10 @@ type calibrant struct {
 type recalParams struct {
 	// Version of recalibration parameters, used when storing/loading
 	// parameters in JSON format for different version of the software
-	MzRecalVersion   string
-	RecalMethod      string  // Recalibration method used (TOF/FTICR/Orbitrap)
-	RMSCalibShiftPPM float64 // RMS of m/z shift in ppm of calibrants that where used for calibration
-	SpecRecalPar     []specRecalParams
+	MzRecalVersion string
+	RecalMethod    string  // Recalibration method used (TOF/FTICR/Orbitrap)
+	CalibShiftPPM  float64 // RMS of m/z shift in ppm of calibrants that where used for calibration
+	SpecRecalPar   []specRecalParams
 }
 
 type specDebugInfo struct {
@@ -840,17 +840,24 @@ func getNrCalPars(recalMethod calibType) int {
 // Therefore, we must maintain the total number of calibrants and the
 // square of the PPM mass error
 type calibQC struct {
-	nrCalibrants int
-	sumSqErr     float64
+	nrRecalibrated int
+	sumRMSErr      float64
 }
 
 func updateCalibQC(calsUsed []calibrant, recalMethod calibType, specRecalPar specRecalParams, calQC *calibQC) {
+	sumSqErr := float64(0.0)
+	nrCalibrants := 0
 	for _, cal := range calsUsed {
 		mzCalib := mzRecal(cal.mzMeasured, recalMethod, specRecalPar.P)
 		massShift := mzCalib - cal.mz
 		massShiftPPM := massShift / cal.mz * 1e6
-		calQC.nrCalibrants++
-		calQC.sumSqErr += massShiftPPM * massShiftPPM
+		nrCalibrants++
+		sumSqErr += massShiftPPM * massShiftPPM
+	}
+	if nrCalibrants > 0 {
+		rmsErr := math.Sqrt(sumSqErr / float64(nrCalibrants))
+		calQC.sumRMSErr += rmsErr
+		calQC.nrRecalibrated++
 	}
 }
 
@@ -976,7 +983,7 @@ func computeRecal(mzML *mzml.MzML, idCals []identifiedCalibrant, par params) (re
 			recal.SpecRecalPar = append(recal.SpecRecalPar, specRecalPar)
 		}
 	}
-	recal.RMSCalibShiftPPM = math.Sqrt(calQC.sumSqErr / float64(calQC.nrCalibrants))
+	recal.CalibShiftPPM = calQC.sumRMSErr / float64(calQC.nrRecalibrated)
 
 	debugListUnusedCalibrants(idCals)
 	return recal, nil
