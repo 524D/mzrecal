@@ -1,0 +1,10 @@
+*.exe
+*.sh
+!build-docker.sh
+!build.sh
+/testdata
+/outputdata
+/release
+/xtandem
+*.xml
+*.zip
